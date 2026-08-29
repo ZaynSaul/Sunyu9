@@ -24,22 +24,8 @@ export default function RootLayout() {
         >
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="permission" options={{ title: 'Contact access' }} />
-          <Stack.Screen name="contacts" options={{ title: 'Your contacts' }} />
-          <Stack.Screen name="scan" options={{ title: 'Scanning' }} />
           <Stack.Screen name="results" options={{ title: 'Review changes' }} />
-          <Stack.Screen
-            name="updating"
-            options={{
-              title: 'Updating',
-              headerBackVisible: false,
-              gestureEnabled: false,
-              headerRight: () => null,
-            }}
-          />
-          <Stack.Screen
-            name="success"
-            options={{ title: 'Done', headerBackVisible: false, gestureEnabled: false }}
-          />
+          <Stack.Screen name="contacts" options={{ title: 'All contacts' }} />
           <Stack.Screen name="settings" options={{ title: 'Settings' }} />
         </Stack>
       </SafeAreaProvider>

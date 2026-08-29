@@ -18,18 +18,25 @@ interface BottomSheetProps {
   visible: boolean;
   onClose: () => void;
   children: ReactNode;
+  /**
+   * When `false`, backdrop tap and the Android back button do nothing — the
+   * content must provide its own way out. Used while a migration is writing so
+   * the run can't be half-abandoned. Default `true`.
+   */
+  dismissible?: boolean;
 }
 
 /**
  * Lightweight bottom sheet — slides up over a dimmed backdrop, sized to its
  * content. Dismisses on backdrop tap, the Android back button, or whatever
- * control the content provides.
+ * control the content provides (unless `dismissible={false}`).
  *
  * Deliberately built on RN's own `Animated` + `Modal` (no reanimated /
  * gesture-handler) to keep this offline utility's dependency surface and APK
  * small. Same visual language as the sheet in the Deliva app.
  */
-export function BottomSheet({ visible, onClose, children }: BottomSheetProps) {
+export function BottomSheet({ visible, onClose, children, dismissible = true }: BottomSheetProps) {
+  const requestClose = dismissible ? onClose : () => {};
   const insets = useSafeAreaInsets();
 
   // Animated values are created once and never reassigned — `useState`'s lazy
@@ -78,15 +85,17 @@ export function BottomSheet({ visible, onClose, children }: BottomSheetProps) {
   if (!rendered) return null;
 
   return (
-    <Modal transparent visible animationType="none" onRequestClose={onClose} statusBarTranslucent>
+    <Modal transparent visible animationType="none" onRequestClose={requestClose} statusBarTranslucent>
       <View style={styles.root}>
         <Animated.View style={[styles.backdrop, { opacity: backdrop }]}>
-          <Pressable
-            style={StyleSheet.absoluteFill}
-            onPress={onClose}
-            accessibilityRole="button"
-            accessibilityLabel="Dismiss"
-          />
+          {dismissible ? (
+            <Pressable
+              style={StyleSheet.absoluteFill}
+              onPress={onClose}
+              accessibilityRole="button"
+              accessibilityLabel="Dismiss"
+            />
+          ) : null}
         </Animated.View>
 
         <Animated.View

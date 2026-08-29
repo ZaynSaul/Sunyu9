@@ -15,10 +15,10 @@ const REASONS = [
 export default function PermissionScreen() {
   const { permission, checking, request } = useContactPermission();
 
-  // As soon as we have access, move on to the contact list.
+  // As soon as we have access, move on to the review flow (it reads + scans).
   useEffect(() => {
     if (permission?.canReadContacts) {
-      router.replace('/contacts');
+      router.replace('/results');
     }
   }, [permission?.canReadContacts]);
 
