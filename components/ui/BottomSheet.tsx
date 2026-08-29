@@ -103,7 +103,7 @@ export function BottomSheet({ visible, onClose, children, dismissible = true }: 
         <Animated.View
           style={[
             styles.sheet,
-            { paddingBottom: insets.bottom + spacing.lg, transform: [{ translateY }] },
+            { paddingBottom: insets.bottom + spacing.xl, transform: [{ translateY }] },
           ]}
         >
           <View style={styles.grabber}>
@@ -111,12 +111,12 @@ export function BottomSheet({ visible, onClose, children, dismissible = true }: 
             {dismissible ? (
               <Pressable
                 onPress={onClose}
-                hitSlop={12}
+                hitSlop={14}
                 accessibilityRole="button"
                 accessibilityLabel="Close"
                 style={({ pressed }) => [styles.close, pressed && styles.closePressed]}
               >
-                <Ionicons name="close" size={22} color={colors.textSecondary} />
+                <Ionicons name="close" size={20} color={colors.textPrimary} />
               </Pressable>
             ) : null}
           </View>
@@ -145,13 +145,13 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.sm,
+    paddingTop: spacing.md,
   },
   grabber: {
-    height: 24,
+    height: 36,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
   handle: {
     width: 40,
@@ -163,11 +163,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     top: 0,
-    bottom: 0,
+    width: 36,
+    height: 36,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceAlt,
+    alignItems: 'center',
     justifyContent: 'center',
-    paddingLeft: spacing.md,
   },
   closePressed: {
-    opacity: 0.5,
+    backgroundColor: colors.border,
   },
 });
