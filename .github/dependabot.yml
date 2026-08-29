@@ -1,0 +1,22 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    # Sunyu9 pins to Expo SDK 57's native module set — don't let Dependabot bump
+    # the RN / Expo / native packages out from under a working prebuild. Security
+    # patches on everything else are welcome.
+    open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: expo
+      - dependency-name: expo-*
+      - dependency-name: react
+      - dependency-name: react-native
+      - dependency-name: react-native-*
+      - dependency-name: "@expo/*"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
