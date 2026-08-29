@@ -351,6 +351,7 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
   },
   selectToggle: {
+    alignSelf: 'flex-end',
     paddingTop: spacing.sm,
   },
   link: {
