@@ -23,7 +23,6 @@ export default function RootLayout() {
           }}
         >
           <Stack.Screen name="index" options={{ headerShown: false }} />
-          <Stack.Screen name="permission" options={{ title: 'Contact access' }} />
           <Stack.Screen name="results" options={{ title: 'Review changes' }} />
           <Stack.Screen name="contacts" options={{ title: 'All contacts' }} />
           <Stack.Screen name="settings" options={{ title: 'Settings' }} />

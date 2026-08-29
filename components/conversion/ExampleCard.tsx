@@ -5,7 +5,9 @@ import { colors, radius, spacing } from '@/constants/theme';
 import { convertNumber } from '@/services/numbering';
 import { OperatorLogo } from './OperatorLogo';
 
-const EXAMPLE_OLD = '7012345';
+// Written the way people actually save numbers — spacing and all — to show the
+// old number is kept exactly as it is in the phonebook.
+const EXAMPLE_OLD = '701 2345';
 const outcome = convertNumber(EXAMPLE_OLD);
 const EXAMPLE_NEW = outcome.status === 'convertible' ? outcome.display : '877012345';
 const EXAMPLE_OPERATOR = outcome.status === 'convertible' ? outcome.operatorName : 'Africell';
@@ -49,7 +51,8 @@ export function ExampleCard() {
       </View>
 
       <Text variant="caption" tone="secondary">
-        Same number — {EXAMPLE_OPERATOR}’s code ({PREFIX}) goes in front, with no space.
+        The old number stays as you saved it. {EXAMPLE_OPERATOR}’s code ({PREFIX}) goes in front of
+        those 7 digits, with no space.
       </Text>
     </View>
   );

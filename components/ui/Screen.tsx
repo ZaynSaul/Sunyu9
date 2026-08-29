@@ -12,11 +12,22 @@ interface ScreenProps {
   edges?: readonly Edge[];
   /** Extra style for the content container. */
   contentStyle?: ViewStyle;
+  /**
+   * Pinned below the scroll area, inside the safe area — a floating action
+   * footer with a hairline top border. Content scrolls behind it.
+   */
+  footer?: ReactNode;
 }
 
 const DEFAULT_EDGES: readonly Edge[] = ['top', 'bottom'];
 
-export function Screen({ children, scroll = false, edges = DEFAULT_EDGES, contentStyle }: ScreenProps) {
+export function Screen({
+  children,
+  scroll = false,
+  edges = DEFAULT_EDGES,
+  contentStyle,
+  footer,
+}: ScreenProps) {
   const inner = <View style={[styles.content, contentStyle]}>{children}</View>;
 
   return (
@@ -31,6 +42,7 @@ export function Screen({ children, scroll = false, edges = DEFAULT_EDGES, conten
       ) : (
         inner
       )}
+      {footer ? <View style={styles.footer}>{footer}</View> : null}
     </SafeAreaView>
   );
 }
@@ -47,5 +59,14 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.lg,
+  },
+  footer: {
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
+    gap: spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    backgroundColor: colors.background,
   },
 });

@@ -21,7 +21,7 @@ export function HeaderSettingsButton() {
       accessibilityLabel="Settings and privacy"
       style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, paddingHorizontal: 4 })}
     >
-      <Ionicons name="shield-checkmark-outline" size={22} color={colors.textPrimary} />
+      <Ionicons name="settings-outline" size={22} color={colors.textPrimary} />
     </Pressable>
   );
 }

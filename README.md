@@ -21,8 +21,9 @@ success + undo**.
 Implemented:
 
 - Expo Router app shell, theme, and screen flow (`app/`)
-- Contact permission flow with an explanation screen and a Settings deep-link
-  when access is blocked (`hooks/useContactPermission.ts`, `app/permission.tsx`)
+- Contact permission ask as a bottom sheet over the home screen, with a Settings
+  deep-link when access is blocked (`hooks/useContactPermission.ts`,
+  `components/permission/PermissionSheet.tsx`)
 - Paged contact reader built on the SDK 57 `expo-contacts` class API, with scan
   progress (`services/contacts/contactReader.ts`, `contactMapper.ts`)
 - Windowed contact list for large address books (`components/contacts/`)
@@ -122,11 +123,12 @@ npm start           # Metro (for an already-installed build)
 ## Layout
 
 ```
-app/                 Expo Router screens: index, permission, contacts, scan,
-                     results, updating, success, settings
+app/                 Expo Router screens: index, results, contacts, settings
+components/           DeadlineCard (shared migration countdown)
 components/ui/        Button, Screen, Text, ProgressBar, Checkbox, BottomSheet, …
+components/permission/ PermissionSheet (contact-access ask over the home screen)
 components/contacts/  ContactList, ContactListItem
-components/conversion/ result cards, number-diff rows, confirm sheet, example card
+components/conversion/ result cards, number-diff rows, migration sheet, example card
 services/numbering/   normalize → validate → classify → convert (pure, tested)
 services/contacts/   contactReader (native) + pure, tested: mapper, analyzer,
                      migrationPlan, contactBackup, backupExport; contactUpdater

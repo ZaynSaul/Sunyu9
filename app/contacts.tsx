@@ -31,7 +31,7 @@ export default function ContactsScreen() {
   }, [permission?.canReadContacts, status, loadContacts]);
 
   if (permission && !permission.canReadContacts) {
-    return <Redirect href="/permission" />;
+    return <Redirect href="/" />;
   }
 
   if (status === 'idle' || status === 'reading') {

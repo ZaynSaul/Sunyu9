@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 
+import { DeadlineCard } from '@/components/DeadlineCard';
 import { LastMigrationCard } from '@/components/conversion/LastMigrationCard';
 import { OperatorLogo } from '@/components/conversion/OperatorLogo';
 import { Screen, Text } from '@/components/ui';
@@ -14,7 +15,7 @@ import {
   type OperatorRule,
 } from '@/constants/numbering';
 import { colors, radius, spacing } from '@/constants/theme';
-import { formatPlanDate, getDeadline } from '@/utils/deadline';
+import { formatPlanDate } from '@/utils/deadline';
 
 /* ----------------------------------------------------------------- helpers */
 
@@ -97,46 +98,6 @@ function Row({
   );
 }
 
-function Hero() {
-  const deadline = getDeadline();
-
-  return (
-    <View style={styles.hero}>
-      <View style={styles.heroLabelRow}>
-        <Ionicons name="hourglass-outline" size={13} color={colors.textSecondary} />
-        <Text style={styles.heroLabel}>COUNTDOWN</Text>
-      </View>
-      <Text style={styles.heroBig}>{deadline.headline}</Text>
-      <Text style={styles.heroSub}>{deadline.caption}</Text>
-
-      <View style={styles.heroRule} />
-
-      <HeroMilestone
-        done={deadline.daysToDualRun <= 0}
-        date={deadline.dualRunStartLabel}
-        label="Both formats work"
-      />
-      <HeroMilestone
-        done={deadline.daysToCutoff <= 0}
-        date={deadline.cutoffLabel}
-        label="7-digit numbers end"
-      />
-    </View>
-  );
-}
-
-function HeroMilestone({ done, date, label }: { done: boolean; date: string; label: string }) {
-  return (
-    <View style={styles.heroMilestone}>
-      <View style={[styles.heroDot, done && styles.heroDotDone]}>
-        {done ? <Ionicons name="checkmark" size={10} color={colors.textInverse} /> : null}
-      </View>
-      <Text style={styles.heroDate}>{date}</Text>
-      <Text style={styles.heroMilestoneLabel}>{label}</Text>
-    </View>
-  );
-}
-
 function OperatorRow({ rule, first }: { rule: OperatorRule; first?: boolean }) {
   return (
     <Row first={first}>
@@ -176,7 +137,7 @@ export default function SettingsScreen() {
   return (
     <Screen scroll>
       <View style={styles.container}>
-        <Hero />
+        <DeadlineCard />
 
         <Group title="Your last update" icon="refresh-outline">
           <View style={styles.plainRow}>
@@ -318,72 +279,6 @@ const styles = StyleSheet.create({
   container: {
     gap: spacing.xl,
     paddingBottom: spacing.xxl,
-  },
-
-  /* hero countdown */
-  hero: {
-    backgroundColor: colors.brandTint,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-  },
-  heroLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  heroLabel: {
-    color: colors.textSecondary,
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1.5,
-  },
-  heroBig: {
-    color: colors.brandDark,
-    fontSize: 30,
-    fontWeight: '800',
-    marginTop: spacing.sm,
-  },
-  heroSub: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: 2,
-  },
-  heroRule: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.brand,
-    opacity: 0.25,
-    marginVertical: spacing.md,
-  },
-  heroMilestone: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingVertical: 4,
-  },
-  heroDot: {
-    width: 16,
-    height: 16,
-    borderRadius: radius.pill,
-    borderWidth: 2,
-    borderColor: colors.brand,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroDotDone: {
-    backgroundColor: colors.brand,
-    borderColor: colors.brand,
-  },
-  heroDate: {
-    color: colors.textPrimary,
-    fontSize: 13,
-    fontWeight: '700',
-    width: 92,
-  },
-  heroMilestoneLabel: {
-    color: colors.textSecondary,
-    fontSize: 13,
-    flexShrink: 1,
   },
 
   /* groups + rows */

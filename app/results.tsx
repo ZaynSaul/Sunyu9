@@ -96,7 +96,7 @@ export default function ResultsScreen() {
 
   // ── permission gate ────────────────────────────────────────────────────────
   if (permission && !permission.canReadContacts) {
-    return <Redirect href="/permission" />;
+    return <Redirect href="/" />;
   }
 
   // ── reading contacts ───────────────────────────────────────────────────────

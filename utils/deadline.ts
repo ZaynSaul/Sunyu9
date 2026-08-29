@@ -24,6 +24,14 @@ export function daysUntil(iso: string, now = new Date()): number {
   return Math.round((target - midnight) / 86_400_000);
 }
 
+/** Local `Date` at midnight for an ISO `yyyy-mm-dd` string. */
+function dateOnly(iso: string): Date {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1);
+}
+
+const clamp01 = (n: number): number => Math.max(0, Math.min(1, n));
+
 export type MigrationPhase = 'before-dual-run' | 'dual-run' | 'retired';
 
 export interface Deadline {
@@ -36,6 +44,11 @@ export interface Deadline {
   strip: string;
   daysToDualRun: number;
   daysToCutoff: number;
+  /**
+   * How far through the dual-run window we are: `0` before it opens,
+   * `1` once the 7-digit cutoff is reached. Drives the countdown progress bar.
+   */
+  windowProgress: number;
   dualRunStartLabel: string;
   cutoffLabel: string;
 }
@@ -46,7 +59,12 @@ export function getDeadline(now = new Date()): Deadline {
   const dualRunStartLabel = formatPlanDate(MIGRATION.dualRunStart);
   const cutoffLabel = formatPlanDate(MIGRATION.sevenDigitCutoff);
 
-  const base = { daysToDualRun, daysToCutoff, dualRunStartLabel, cutoffLabel };
+  // Whole length of the dual-run window, measured from its own start date.
+  const windowDays = daysUntil(MIGRATION.sevenDigitCutoff, dateOnly(MIGRATION.dualRunStart));
+  const windowProgress =
+    windowDays > 0 ? clamp01((windowDays - daysToCutoff) / windowDays) : daysToCutoff > 0 ? 0 : 1;
+
+  const base = { daysToDualRun, daysToCutoff, windowProgress, dualRunStartLabel, cutoffLabel };
 
   if (daysToDualRun > 0) {
     const d = `${daysToDualRun} ${daysToDualRun === 1 ? 'day' : 'days'}`;
