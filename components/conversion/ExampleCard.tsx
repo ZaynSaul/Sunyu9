@@ -9,7 +9,7 @@ import { OperatorLogo } from './OperatorLogo';
 // old number is kept exactly as it is in the phonebook.
 const EXAMPLE_OLD = '701 2345';
 const outcome = convertNumber(EXAMPLE_OLD);
-const EXAMPLE_NEW = outcome.status === 'convertible' ? outcome.display : '877012345';
+const EXAMPLE_NEW = outcome.status === 'convertible' ? outcome.display : '87 701 2345';
 const EXAMPLE_OPERATOR = outcome.status === 'convertible' ? outcome.operatorName : 'Africell';
 const EXAMPLE_OPERATOR_ID = outcome.status === 'convertible' ? outcome.operator : 'africell';
 const PREFIX = EXAMPLE_NEW.slice(0, 2);
@@ -51,8 +51,7 @@ export function ExampleCard() {
       </View>
 
       <Text variant="caption" tone="secondary">
-        The old number stays as you saved it. {EXAMPLE_OPERATOR}’s code ({PREFIX}) goes in front of
-        those 7 digits, with no space.
+        Your 7 digits don’t change — {EXAMPLE_OPERATOR}’s code ({PREFIX}) just goes in front.
       </Text>
     </View>
   );

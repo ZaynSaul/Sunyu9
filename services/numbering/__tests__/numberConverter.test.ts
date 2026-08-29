@@ -37,10 +37,12 @@ describe('convertNumber — convertible old numbers', () => {
     expect(outcome.newNational).toBe('877123456');
   });
 
-  it('shows the migrated number as one unbroken run of digits', () => {
+  it('groups the migrated national number as XX XXX XXXX', () => {
     const outcome = run('7123456');
     if (outcome.status !== 'convertible') throw new Error('expected convertible');
-    expect(outcome.display).toBe('877123456');
+    expect(outcome.display).toBe('87 712 3456');
+    // raw 9-digit form is still available for classification / E.164
+    expect(outcome.newNational).toBe('877123456');
   });
 
   it('keeps the +220 in the display when the original had a country code', () => {
@@ -49,10 +51,13 @@ describe('convertNumber — convertible old numbers', () => {
     if (national.status !== 'convertible' || international.status !== 'convertible') {
       throw new Error('expected convertible');
     }
-    expect(national.display).toBe('877123456');
-    expect(international.display).toBe('+220 877123456');
-    // the value actually written stays E.164 with no spaces
-    expect(international.target).toBe('+220877123456');
+    expect(national.display).toBe('87 712 3456');
+    expect(international.display).toBe('+220 87 712 3456');
+    // the number is written exactly as the preview reads it
+    expect(national.target).toBe('87 712 3456');
+    expect(international.target).toBe('+220 87 712 3456');
+    // E.164 stays canonical (unbroken) for any programmatic use
+    expect(international.e164).toBe('+220877123456');
   });
 });
 
@@ -126,17 +131,19 @@ describe('idempotency', () => {
   it('converting an already-converted number is a no-op', () => {
     const first = run('7123456');
     if (first.status !== 'convertible') throw new Error('expected convertible');
-    const second = run(first.newNational);
-    expect(second.status).toBe('already-migrated');
-    const third = run(first.e164);
-    expect(third.status).toBe('already-migrated');
+    expect(run(first.newNational).status).toBe('already-migrated');
+    expect(run(first.e164).status).toBe('already-migrated');
+    // the grouped form we actually write back must also be recognised on re-scan
+    expect(run(first.target).status).toBe('already-migrated');
+    expect(run('+220 87 712 3456').status).toBe('already-migrated');
   });
 });
 
 describe('helpers', () => {
-  it('formatNewNational keeps the 9 digits unbroken (no space after the prefix)', () => {
-    expect(formatNewNational('877123456')).toBe('877123456');
-    expect(formatNewNational('12345')).toBe('12345');
+  it('formatNewNational groups a 9-digit number as XX XXX XXXX', () => {
+    expect(formatNewNational('877123456')).toBe('87 712 3456');
+    expect(formatNewNational('833435355')).toBe('83 343 5355');
+    expect(formatNewNational('12345')).toBe('12345'); // not 9 digits — passthrough
   });
 
   it('toE164 prefixes +220', () => {

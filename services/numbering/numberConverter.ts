@@ -21,15 +21,16 @@ import { validateNumber } from './numberValidator';
 const { countryCallingCode } = MIGRATION;
 
 /**
- * Display form of the migrated number.
- *
- * It is shown as one unbroken run of 9 digits: the operator's 2-digit code sits
- * directly in front of the untouched 7-digit number, with no separator. The
- * prefix and the old number are now a single number, not "code + number", so we
- * never put a space between them.
+ * Display form of the migrated national number: `XX XXX XXXX` — the operator's
+ * 2-digit code, then the untouched 7-digit number grouped 3-4. This mirrors
+ * PURA's own worked example (`7xx xxxx` → `87 7xx xxxx`). Anything that isn't a
+ * clean 9-digit string is returned unchanged.
  */
 export function formatNewNational(nineDigits: string): string {
-  return nineDigits;
+  if (!/^\d{9}$/.test(nineDigits)) {
+    return nineDigits;
+  }
+  return `${nineDigits.slice(0, 2)} ${nineDigits.slice(2, 5)} ${nineDigits.slice(5)}`;
 }
 
 export function toE164(nationalNumber: string): string {
@@ -113,6 +114,11 @@ export function convertNumber(raw: string): ConversionOutcome {
   }
 
   const e164 = toE164(newNational);
+  // Mirror how the number was stored: keep the `+220` in front when the original
+  // had a country code, so the preview matches what gets written.
+  const display = normalized.hadCountryCode
+    ? `+${countryCallingCode} ${formatNewNational(newNational)}`
+    : formatNewNational(newNational);
   return {
     status: 'convertible',
     operator: rule.id,
@@ -120,12 +126,10 @@ export function convertNumber(raw: string): ConversionOutcome {
     oldNational: nsn,
     newNational,
     e164,
-    // Mirror how the number was stored: keep the `+220` in front when the
-    // original had a country code, so the preview matches what gets written.
-    display: normalized.hadCountryCode
-      ? `+${countryCallingCode} ${formatNewNational(newNational)}`
-      : formatNewNational(newNational),
+    display,
     hadCountryCode: normalized.hadCountryCode,
-    target: normalized.hadCountryCode ? e164 : newNational,
+    // The number is written exactly as the preview reads it — grouped, and with
+    // the `+220` kept when the original carried one.
+    target: display,
   };
 }

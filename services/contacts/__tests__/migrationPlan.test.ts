@@ -52,7 +52,7 @@ describe('planContactPatch', () => {
     const plan = planContactPatch(analyzed, selected)!;
 
     expect(plan.nextPhones).toEqual([
-      { id: 'p-mobile', label: 'mobile', number: '877123456' },
+      { id: 'p-mobile', label: 'mobile', number: '87 712 3456' },
       { id: 'p-work', label: 'work', number: '8491234' },
       { id: 'p-home', label: 'home', number: '3123456' },
     ]);
@@ -71,11 +71,11 @@ describe('planContactPatch', () => {
     expect(planContactPatch(analysis.actionable[0], new Set())).toBeNull();
   });
 
-  it('preserves international formatting choice via the outcome target', async () => {
+  it('writes the grouped, +220-prefixed form via the outcome target', async () => {
     const analysis = await analyze([contact('a', [['mobile', '+220 7123456']])]);
     const analyzed = analysis.actionable[0];
     const plan = planContactPatch(analyzed, allKeys(analysis))!;
-    expect(plan.nextPhones[0].number).toBe('+220877123456');
+    expect(plan.nextPhones[0].number).toBe('+220 87 712 3456');
   });
 });
 

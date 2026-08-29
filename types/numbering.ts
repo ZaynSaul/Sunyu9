@@ -63,20 +63,17 @@ export type ConversionOutcome =
       oldNational: string;
       /** 9 digits. */
       newNational: string;
-      /** `+220` + newNational. The safe format to write back to a contact. */
+      /** `+220` + newNational, unbroken (`+220877123456`). Canonical E.164. */
       e164: string;
       /**
-       * How to show the migrated number in the preview — one unbroken run of
-       * digits (`877123456`), with the `+220 ` prefix kept only when the stored
-       * number had a country code.
+       * How to show the migrated number in the preview: `XX XXX XXXX`
+       * (`87 712 3456`), with a `+220 ` prefix kept when the stored number had a
+       * country code. `target` is written to the contact verbatim from this.
        */
       display: string;
       /** The stored number was written in international (`+220`) form. */
       hadCountryCode: boolean;
-      /**
-       * What should actually be written back to the contact: `e164` when the
-       * original used international form, otherwise the bare 9-digit national.
-       */
+      /** What is written back to the contact — identical to `display`. */
       target: string;
     }
   | {

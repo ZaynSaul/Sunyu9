@@ -50,10 +50,10 @@ describe('analyzeContact', () => {
       contact('c', [['mobile', '7123456'], ['work', '+220 7123456']]),
     ).numbers;
 
-    expect(national.outcome.status === 'convertible' && national.outcome.target).toBe('877123456');
+    expect(national.outcome.status === 'convertible' && national.outcome.target).toBe('87 712 3456');
     expect(
       international.outcome.status === 'convertible' && international.outcome.target,
-    ).toBe('+220877123456');
+    ).toBe('+220 87 712 3456');
   });
 });
 

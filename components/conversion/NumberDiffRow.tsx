@@ -2,7 +2,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, View } from 'react-native';
 
 import { Checkbox, Text } from '@/components/ui';
-import { MIGRATION } from '@/constants/numbering';
 import { colors, spacing } from '@/constants/theme';
 import type { AnalyzedPhoneNumber } from '@/services/contacts/contactAnalyzer';
 import { formatLabel } from '@/utils/format';
@@ -36,8 +35,7 @@ export function NumberDiffRow({ number, selected, onToggle }: NumberDiffRowProps
             </Text>
             <Ionicons name="arrow-forward" size={15} color={colors.textSecondary} />
             <Text variant="body" weight="semibold">
-              {outcome.hadCountryCode ? `+${MIGRATION.countryCallingCode} ` : ''}
-              {outcome.newNational}
+              {outcome.display}
             </Text>
           </View>
         </View>
