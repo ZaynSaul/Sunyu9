@@ -65,7 +65,11 @@ export type ConversionOutcome =
       newNational: string;
       /** `+220` + newNational. The safe format to write back to a contact. */
       e164: string;
-      /** Grouped for display, e.g. `87 712 3456`. */
+      /**
+       * How to show the migrated number in the preview — one unbroken run of
+       * digits (`877123456`), with the `+220 ` prefix kept only when the stored
+       * number had a country code.
+       */
       display: string;
       /** The stored number was written in international (`+220`) form. */
       hadCountryCode: boolean;

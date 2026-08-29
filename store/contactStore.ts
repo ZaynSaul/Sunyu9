@@ -1,9 +1,8 @@
 /**
- * Global contact state.
- *
- * Milestone 1 responsibility: hold the permission snapshot, drive the read, and
- * expose the resulting `AppContact[]` plus scan progress to the screens. Nothing
- * is persisted here — contacts live in memory only and are re-read on demand.
+ * Global contact state: holds the permission snapshot, drives the read, and
+ * exposes the resulting `AppContact[]` plus scan progress to the screens.
+ * Nothing is persisted here — contacts live in memory only and are re-read on
+ * demand.
  */
 import { create } from 'zustand';
 

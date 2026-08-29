@@ -30,9 +30,9 @@ Implemented:
   conservative by design (`services/numbering/`)
 - **Scan + preview** — per-number analysis with progress, a review screen showing
   every `old → new` change (and every skipped number, greyed, with a reason),
-  per-number / per-contact / all selection, and a confirmation screen
+  per-number / per-contact / all selection, and a bottom-sheet confirmation
   (`services/contacts/contactAnalyzer.ts`, `store/analysisStore.ts`,
-  `app/scan.tsx`, `app/results.tsx`, `app/confirm.tsx`, `components/conversion/`)
+  `app/scan.tsx`, `app/results.tsx`, `components/conversion/`)
 - **Write + backup + undo** — `patch({ phones })` rebuilds each contact's full
   phone list (unchanged rows kept, selected rows swapped to the converted
   `target`). Before/while writing, each affected contact's *complete* original
@@ -47,16 +47,18 @@ Implemented:
 - **Settings → Last update** — the backup survives app restarts
   (`migrationStore.hydrateBackup`), so Undo and CSV export stay available later
   (`components/conversion/LastMigrationCard.tsx`)
-- 58 unit tests across the engine, analyzer, migration planner, and CSV export
+- 62 unit tests across the engine, analyzer, migration planner, and CSV export
 - Numbering-plan reference data + a Settings info screen
   (`constants/numbering.ts`, `app/settings.tsx`)
 - Trust hardening: shipping builds (`preview` / `production` EAS profiles) block
   all networking permissions via `app.config.js`, so the OS app-info screen
   proves the app cannot upload anything
 
-Next up: run a prebuild end-to-end on a device; a no-permission "paste a number"
-lookup screen (funnel + trust); Wolof/Mandinka localisation; a "tell my contacts"
-WhatsApp/SMS share; a business CSV bulk-convert mode.
+Runs end to end on a physical Android device (debug prebuild).
+
+Next up: a no-permission "paste a number" lookup screen (funnel + trust);
+Wolof/Mandinka localisation; a "tell my contacts" WhatsApp/SMS share; a business
+CSV bulk-convert mode; iOS device pass.
 
 ## The numbering plan
 
@@ -120,14 +122,19 @@ npm start           # Metro (for an already-installed build)
 ## Layout
 
 ```
-app/                 Expo Router screens (index, permission, contacts, + stubs)
-components/ui/        Button, Screen, Text, ProgressBar, ComingSoon
+app/                 Expo Router screens: index, permission, contacts, scan,
+                     results, updating, success, settings
+components/ui/        Button, Screen, Text, ProgressBar, Checkbox, BottomSheet, …
 components/contacts/  ContactList, ContactListItem
-services/contacts/   contactReader (native), contactMapper (pure, tested)
+components/conversion/ result cards, number-diff rows, confirm sheet, example card
+services/numbering/   normalize → validate → classify → convert (pure, tested)
+services/contacts/   contactReader (native) + pure, tested: mapper, analyzer,
+                     migrationPlan, contactBackup, backupExport; contactUpdater
+                     is the only module that writes contacts
 services/storage/    schema-validated AsyncStorage wrapper
-store/               zustand contact store
+store/               zustand: contactStore, analysisStore, migrationStore
 hooks/               useContactPermission
-constants/           numbering plan data, theme tokens
-types/               AppContact / permission models
-utils/               display formatting helpers
+constants/           numbering-plan data, theme tokens, build flags
+types/               AppContact, permission, numbering, migration models
+utils/               deadline maths, display formatting helpers
 ```

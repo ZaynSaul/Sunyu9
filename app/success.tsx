@@ -39,6 +39,11 @@ export default function SuccessScreen() {
     resetMigration();
     resetAnalysis();
     resetContacts();
+    // Unwind the whole flow (permission → … → success) so hardware-back from
+    // Home doesn't walk back through the now-stale intermediate screens.
+    if (router.canDismiss()) {
+      router.dismissAll();
+    }
     router.replace('/');
   };
 

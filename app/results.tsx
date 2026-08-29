@@ -53,7 +53,13 @@ export default function ResultsScreen() {
             {formatCount(summary.contactsScanned)} contacts. None of them use the old 7-digit
             format.
           </Text>
-          <Button title="Done" onPress={() => router.replace('/')} />
+          <Button
+            title="Done"
+            onPress={() => {
+              if (router.canDismiss()) router.dismissAll();
+              router.replace('/');
+            }}
+          />
         </View>
       </Screen>
     );

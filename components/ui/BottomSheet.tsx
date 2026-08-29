@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import {
   Animated,
   Dimensions,
@@ -31,13 +31,22 @@ interface BottomSheetProps {
  */
 export function BottomSheet({ visible, onClose, children }: BottomSheetProps) {
   const insets = useSafeAreaInsets();
-  const [mounted, setMounted] = useState(visible);
-  const translateY = useRef(new Animated.Value(SCREEN_H)).current;
-  const backdrop = useRef(new Animated.Value(0)).current;
+
+  // Animated values are created once and never reassigned — `useState`'s lazy
+  // initialiser keeps them stable without the ref-during-render lint noise.
+  const [translateY] = useState(() => new Animated.Value(SCREEN_H));
+  const [backdrop] = useState(() => new Animated.Value(0));
+
+  // Keep the Modal mounted through the exit animation. Adjusting state during
+  // render (rather than in an effect) is the React-blessed way to respond to a
+  // prop change without an extra paint.
+  const [rendered, setRendered] = useState(visible);
+  if (visible && !rendered) {
+    setRendered(true);
+  }
 
   useEffect(() => {
     if (visible) {
-      setMounted(true);
       Animated.parallel([
         Animated.spring(translateY, {
           toValue: 0,
@@ -51,7 +60,7 @@ export function BottomSheet({ visible, onClose, children }: BottomSheetProps) {
       return;
     }
 
-    Animated.parallel([
+    const exit = Animated.parallel([
       Animated.timing(translateY, {
         toValue: SCREEN_H,
         duration: 200,
@@ -59,12 +68,14 @@ export function BottomSheet({ visible, onClose, children }: BottomSheetProps) {
         useNativeDriver: true,
       }),
       Animated.timing(backdrop, { toValue: 0, duration: 150, useNativeDriver: true }),
-    ]).start(({ finished }) => {
-      if (finished) setMounted(false);
+    ]);
+    exit.start(({ finished }) => {
+      if (finished) setRendered(false);
     });
+    return () => exit.stop();
   }, [visible, translateY, backdrop]);
 
-  if (!mounted) return null;
+  if (!rendered) return null;
 
   return (
     <Modal transparent visible animationType="none" onRequestClose={onClose} statusBarTranslucent>

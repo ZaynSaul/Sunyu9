@@ -53,7 +53,7 @@ export default function UpdatingScreen() {
             undone.
           </Text>
           <Button title="Try again" onPress={() => void apply(analysis, selected)} />
-          <Button title="Back to review" variant="ghost" onPress={() => router.replace('/results')} />
+          <Button title="Back to review" variant="ghost" onPress={() => router.back()} />
         </View>
       </Screen>
     );

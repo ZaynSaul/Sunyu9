@@ -39,3 +39,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Using yarn — npm lockfile not tracked
+package-lock.json

@@ -2,8 +2,8 @@
  * App-level contact model.
  *
  * This is a deliberately small, platform-free shape derived from whatever
- * `expo-contacts` returns. Screens, the store, and (later) the numbering engine
- * only ever see this model — never the raw native objects.
+ * `expo-contacts` returns. Screens, the store, and the numbering engine only
+ * ever see this model — never the raw native objects.
  */
 
 /** A single phone entry belonging to a contact. */
@@ -11,7 +11,7 @@ export interface AppPhoneNumber {
   /**
    * Stable id of this phone row from the device contacts database.
    * Present on both platforms for existing numbers; may be `null` for
-   * malformed rows. Used as a React key and, later, to target updates.
+   * malformed rows. Used as a React key and to target updates.
    */
   id: string | null;
   /** Raw label as stored on the device, e.g. `"mobile"`, `"work"`, `"home"`. */
@@ -33,5 +33,5 @@ export interface AppContact {
   phoneNumbers: AppPhoneNumber[];
 }
 
-/** Progress callback shape shared by the reader and (later) the updater. */
+/** Progress callback shape shared by the reader, analyzer, and updater. */
 export type ProgressCallback = (processed: number, total: number) => void;

@@ -12,9 +12,9 @@ import type { ZodType } from 'zod';
 const NAMESPACE = 'gn9:';
 
 export type StorageKey =
-  /** The most recent migration batch, for Undo (later milestone). */
+  /** The most recent migration batch, for Undo / CSV export. */
   | 'migration:last'
-  /** User settings (later milestone). */
+  /** Reserved for user settings — not written yet. */
   | 'settings';
 
 const namespaced = (key: StorageKey): string => `${NAMESPACE}${key}`;
