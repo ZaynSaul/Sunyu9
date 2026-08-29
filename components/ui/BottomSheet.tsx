@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { type ReactNode, useEffect, useState } from 'react';
 import {
   Animated,
@@ -19,17 +20,18 @@ interface BottomSheetProps {
   onClose: () => void;
   children: ReactNode;
   /**
-   * When `false`, backdrop tap and the Android back button do nothing — the
-   * content must provide its own way out. Used while a migration is writing so
-   * the run can't be half-abandoned. Default `true`.
+   * When `false`, the backdrop tap, the Android back button and the close (×)
+   * button all do nothing — the content must provide its own way out. Used
+   * while a migration is writing so the run can't be half-abandoned.
+   * Default `true`.
    */
   dismissible?: boolean;
 }
 
 /**
  * Lightweight bottom sheet — slides up over a dimmed backdrop, sized to its
- * content. Dismisses on backdrop tap, the Android back button, or whatever
- * control the content provides (unless `dismissible={false}`).
+ * content. Dismisses on the close (×) button, backdrop tap, the Android back
+ * button, or whatever control the content provides (unless `dismissible={false}`).
  *
  * Deliberately built on RN's own `Animated` + `Modal` (no reanimated /
  * gesture-handler) to keep this offline utility's dependency surface and APK
@@ -104,7 +106,20 @@ export function BottomSheet({ visible, onClose, children, dismissible = true }: 
             { paddingBottom: insets.bottom + spacing.lg, transform: [{ translateY }] },
           ]}
         >
-          <View style={styles.handle} />
+          <View style={styles.grabber}>
+            <View style={styles.handle} />
+            {dismissible ? (
+              <Pressable
+                onPress={onClose}
+                hitSlop={12}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+                style={({ pressed }) => [styles.close, pressed && styles.closePressed]}
+              >
+                <Ionicons name="close" size={22} color={colors.textSecondary} />
+              </Pressable>
+            ) : null}
+          </View>
           {children}
         </Animated.View>
       </View>
@@ -132,12 +147,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.sm,
   },
+  grabber: {
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
   handle: {
-    alignSelf: 'center',
     width: 40,
     height: 4,
     borderRadius: radius.pill,
     backgroundColor: colors.border,
-    marginBottom: spacing.lg,
+  },
+  close: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    paddingLeft: spacing.md,
+  },
+  closePressed: {
+    opacity: 0.5,
   },
 });
