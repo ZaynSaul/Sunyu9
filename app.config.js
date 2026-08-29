@@ -129,7 +129,7 @@ export default {
        */
       hardened: IS_RELEASE_BUILD,
       /** Public source repository. Shown in Settings; leave '' to hide the link. */
-      sourceUrl: 'https://github.com/saulzayn/sunyu9',
+      sourceUrl: 'https://github.com/ZaynSaul/Sunyu9',
     },
   },
 };
