@@ -6,7 +6,6 @@
   "build": {
     "development": {
       "distribution": "internal",
-      "channel": "development",
       "android": {
         "buildType": "apk",
         "gradleCommand": ":app:assembleDebug"
@@ -14,7 +13,6 @@
     },
     "preview": {
       "distribution": "internal",
-      "channel": "preview",
       "env": {
         "APP_VARIANT": "release"
       },
@@ -23,7 +21,6 @@
       }
     },
     "production": {
-      "channel": "production",
       "autoIncrement": true,
       "env": {
         "APP_VARIANT": "release"

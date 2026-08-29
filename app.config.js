@@ -130,6 +130,9 @@ export default {
       hardened: IS_RELEASE_BUILD,
       /** Public source repository. Shown in Settings; leave '' to hide the link. */
       sourceUrl: 'https://github.com/ZaynSaul/Sunyu9',
+      eas: {
+        projectId: '15ff8e97-aa47-4e61-8a74-cf37db942a71',
+      },
     },
   },
 };
