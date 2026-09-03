@@ -6,7 +6,8 @@
 export interface PatchPhone {
   /** Existing row id to update in place; `undefined` = create a new row. */
   id?: string;
-  label: string;
+  /** Friendly label ("mobile", "home", …); omitted / empty means "no label". */
+  label?: string;
   number: string;
 }
 

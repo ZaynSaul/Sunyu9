@@ -10,9 +10,9 @@ describe('mapPhoneNumber', () => {
     });
   });
 
-  it('falls back to the "other" label when none is stored', () => {
-    expect(mapPhoneNumber({ id: '2', number: '7123456' })?.label).toBe('other');
-    expect(mapPhoneNumber({ id: '3', label: '  ', number: '7123456' })?.label).toBe('other');
+  it('leaves the label empty when none is stored (display fills in "Other")', () => {
+    expect(mapPhoneNumber({ id: '2', number: '7123456' })?.label).toBe('');
+    expect(mapPhoneNumber({ id: '3', label: '  ', number: '7123456' })?.label).toBe('');
   });
 
   it('returns null for entries with no usable number', () => {

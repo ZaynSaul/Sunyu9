@@ -1,18 +1,33 @@
 /**
  * Pure planning for a migration run — no native calls.
  *
- * `expo-contacts`' `patch({ phones })` **replaces the whole phone list**, so for
- * every contact we touch we must rebuild the complete list: unchanged rows kept
- * exactly as they were, selected rows swapped to their converted `target`.
+ * The planner only decides *which numbers on which contacts* the user wants
+ * converted, as `{ from, to }` pairs. It deliberately does NOT rebuild each
+ * contact's phone list: `contactUpdater` does that from a fresh read at write
+ * time, so a contact edited (or an id rotated by an OS sync) between the scan
+ * and the confirmation can't make us write a stale list.
  */
 import type {
   AnalyzedContact,
   ContactAnalysis,
 } from '@/services/contacts/contactAnalyzer';
-import { phoneKey } from '@/services/contacts/contactAnalyzer';
-import type { ContactBackup, PatchPhone } from '@/types';
 
-/** Group the selected phone keys by contact id, dropping contacts with none. */
+/** One number the user picked, as stored on the device → its converted form. */
+export interface NumberConversion {
+  /** The number exactly as it is stored on the contact today. */
+  from: string;
+  /** What it should become (grouped, `+220`-aware — the outcome's `target`). */
+  to: string;
+}
+
+export interface ContactConversionPlan {
+  contactId: string;
+  contactName: string;
+  /** Non-empty — a contact with nothing selected is dropped. Matched by value. */
+  conversions: NumberConversion[];
+}
+
+/** Group the selected phone keys by contact, dropping contacts with none. */
 export function groupSelectionByContact(
   analysis: ContactAnalysis,
   selected: Set<string>,
@@ -27,71 +42,26 @@ export function groupSelectionByContact(
   return byId;
 }
 
-export interface ContactPatchPlan {
-  contactId: string;
-  contactName: string;
-  /** The full phone list to write. */
-  nextPhones: PatchPhone[];
-  /** The full phone list as it is now — the backup. */
-  backup: ContactBackup;
-  /** Count of rows actually changing. */
-  changedCount: number;
-}
-
-/**
- * Build the patch + backup for one contact given the user's selection.
- * Returns `null` when nothing would actually change.
- */
-export function planContactPatch(
+/** The `{ from, to }` conversions the user selected for one contact, de-duped. */
+export function planContactConversions(
   analyzed: AnalyzedContact,
   selected: Set<string>,
-): ContactPatchPlan | null {
-  const { contact, numbers } = analyzed;
-
-  const originalPhones: PatchPhone[] = contact.phoneNumbers.map((phone) => ({
-    ...(phone.id ? { id: phone.id } : {}),
-    label: phone.label,
-    number: phone.original,
-  }));
-
-  const changedTags: string[] = [];
-  const nextPhones: PatchPhone[] = contact.phoneNumbers.map((phone, index) => {
-    const key = phoneKey(contact.id, phone, index);
-    const analyzedNumber = numbers.find((n) => n.key === key);
-    const base: PatchPhone = {
-      ...(phone.id ? { id: phone.id } : {}),
-      label: phone.label,
-      number: phone.original,
-    };
-
+): NumberConversion[] {
+  const conversions: NumberConversion[] = [];
+  for (const number of analyzed.numbers) {
     if (
-      selected.has(key) &&
-      analyzedNumber?.outcome.status === 'convertible' &&
-      analyzedNumber.outcome.target !== phone.original
+      !selected.has(number.key) ||
+      number.outcome.status !== 'convertible' ||
+      number.outcome.target === number.phone.original
     ) {
-      changedTags.push(phone.id ?? `i${index}`);
-      return { ...base, number: analyzedNumber.outcome.target };
+      continue;
     }
-    return base;
-  });
-
-  if (changedTags.length === 0) {
-    return null;
+    const from = number.phone.original;
+    if (!conversions.some((c) => c.from === from)) {
+      conversions.push({ from, to: number.outcome.target });
+    }
   }
-
-  return {
-    contactId: contact.id,
-    contactName: contact.name,
-    nextPhones,
-    backup: {
-      contactId: contact.id,
-      contactName: contact.name,
-      originalPhones,
-      newPhones: nextPhones,
-      changedPhoneTags: changedTags,
-    },
-    changedCount: changedTags.length,
-  };
+  return conversions;
 }
 
 /**
@@ -103,16 +73,20 @@ export function planMigration(
   analysis: ContactAnalysis,
   selected: Set<string>,
   onlyContactIds?: Set<string>,
-): ContactPatchPlan[] {
+): ContactConversionPlan[] {
   const grouped = groupSelectionByContact(analysis, selected);
-  const plans: ContactPatchPlan[] = [];
+  const plans: ContactConversionPlan[] = [];
   for (const analyzed of grouped.values()) {
     if (onlyContactIds && !onlyContactIds.has(analyzed.contact.id)) {
       continue;
     }
-    const plan = planContactPatch(analyzed, selected);
-    if (plan) {
-      plans.push(plan);
+    const conversions = planContactConversions(analyzed, selected);
+    if (conversions.length > 0) {
+      plans.push({
+        contactId: analyzed.contact.id,
+        contactName: analyzed.contact.name,
+        conversions,
+      });
     }
   }
   return plans;

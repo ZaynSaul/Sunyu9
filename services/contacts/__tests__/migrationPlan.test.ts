@@ -3,7 +3,7 @@ import type { AppContact } from '@/types';
 import {
   groupSelectionByContact,
   makeBatchId,
-  planContactPatch,
+  planContactConversions,
   planMigration,
 } from '../migrationPlan';
 
@@ -37,8 +37,8 @@ function allKeys(analysis: Awaited<ReturnType<typeof analyze>>): Set<string> {
   return keys;
 }
 
-describe('planContactPatch', () => {
-  it('rebuilds the full phone list, changing only the selected convertible rows', async () => {
+describe('planContactConversions', () => {
+  it('returns only the selected convertible numbers, as from → to pairs', async () => {
     const analysis = await analyze([
       contact('musa', [
         ['mobile', '7123456', 'p-mobile'],
@@ -49,33 +49,35 @@ describe('planContactPatch', () => {
     const analyzed = analysis.actionable[0];
     const selected = new Set([analyzed.numbers[0].key]); // only the mobile
 
-    const plan = planContactPatch(analyzed, selected)!;
-
-    expect(plan.nextPhones).toEqual([
-      { id: 'p-mobile', label: 'mobile', number: '87 712 3456' },
-      { id: 'p-work', label: 'work', number: '8491234' },
-      { id: 'p-home', label: 'home', number: '3123456' },
+    expect(planContactConversions(analyzed, selected)).toEqual([
+      { from: '7123456', to: '877123456' },
     ]);
-    expect(plan.changedCount).toBe(1);
-    expect(plan.backup.originalPhones).toEqual([
-      { id: 'p-mobile', label: 'mobile', number: '7123456' },
-      { id: 'p-work', label: 'work', number: '8491234' },
-      { id: 'p-home', label: 'home', number: '3123456' },
-    ]);
-    expect(plan.backup.newPhones).toEqual(plan.nextPhones);
-    expect(plan.backup.changedPhoneTags).toEqual(['p-mobile']);
   });
 
-  it('returns null when nothing is selected for the contact', async () => {
+  it('is empty when nothing is selected for the contact', async () => {
     const analysis = await analyze([contact('a', [['mobile', '7123456']])]);
-    expect(planContactPatch(analysis.actionable[0], new Set())).toBeNull();
+    expect(planContactConversions(analysis.actionable[0], new Set())).toEqual([]);
   });
 
-  it('writes the grouped, +220-prefixed form via the outcome target', async () => {
+  it('uses the grouped, +220-prefixed target', async () => {
     const analysis = await analyze([contact('a', [['mobile', '+220 7123456']])]);
     const analyzed = analysis.actionable[0];
-    const plan = planContactPatch(analyzed, allKeys(analysis))!;
-    expect(plan.nextPhones[0].number).toBe('+220 87 712 3456');
+    expect(planContactConversions(analyzed, allKeys(analysis))).toEqual([
+      { from: '+220 7123456', to: '+220 87 712 3456' },
+    ]);
+  });
+
+  it('de-dupes when two rows hold the same stored number', async () => {
+    const analysis = await analyze([
+      contact('a', [
+        ['mobile', '7123456', 'p1'],
+        ['home', '7123456', 'p2'],
+      ]),
+    ]);
+    const analyzed = analysis.actionable[0];
+    expect(planContactConversions(analyzed, allKeys(analysis))).toEqual([
+      { from: '7123456', to: '877123456' },
+    ]);
   });
 });
 
@@ -90,7 +92,7 @@ describe('planMigration / groupSelectionByContact', () => {
     const analysis = await analyze(contacts);
     const plans = planMigration(analysis, allKeys(analysis));
     expect(plans.map((p) => p.contactId).sort()).toEqual(['a', 'c']);
-    expect(plans.reduce((sum, p) => sum + p.changedCount, 0)).toBe(3);
+    expect(plans.reduce((sum, p) => sum + p.conversions.length, 0)).toBe(3);
   });
 
   it('drops a contact once its selection is cleared', async () => {
@@ -106,7 +108,15 @@ describe('planMigration / groupSelectionByContact', () => {
     expect([...grouped.keys()].sort()).toEqual(['a', 'c']);
 
     const plans = planMigration(analysis, keys);
-    expect(plans.find((p) => p.contactId === 'c')!.changedCount).toBe(1);
+    expect(plans.find((p) => p.contactId === 'c')!.conversions).toEqual([
+      { from: '3123456', to: '833123456' },
+    ]);
+  });
+
+  it('restricts the run to onlyContactIds', async () => {
+    const analysis = await analyze(contacts);
+    const plans = planMigration(analysis, allKeys(analysis), new Set(['c']));
+    expect(plans.map((p) => p.contactId)).toEqual(['c']);
   });
 });
 

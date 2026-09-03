@@ -13,7 +13,7 @@ import type { MigrationBackup } from '@/types';
 
 const patchPhoneSchema = z.object({
   id: z.string().optional(),
-  label: z.string(),
+  label: z.string().optional(),
   number: z.string(),
 });
 
@@ -59,7 +59,7 @@ export function backupToText(backup: MigrationBackup): string {
     for (const phone of contact.originalPhones) {
       const tag = phone.id ?? '';
       const changed = contact.changedPhoneTags.includes(tag) ? '  (changed)' : '';
-      lines.push(`  ${phone.label}: ${phone.number}${changed}`);
+      lines.push(`  ${phone.label || 'other'}: ${phone.number}${changed}`);
     }
     lines.push('');
   }

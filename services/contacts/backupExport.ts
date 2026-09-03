@@ -25,7 +25,7 @@ export function backupToCsv(backup: MigrationBackup): string {
       const newNumber = next?.number ?? original.number;
       rows.push([
         contact.contactName,
-        original.label,
+        original.label || 'other',
         original.number,
         newNumber,
         original.number === newNumber ? 'no' : 'yes',

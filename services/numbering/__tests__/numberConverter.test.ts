@@ -53,8 +53,9 @@ describe('convertNumber — convertible old numbers', () => {
     }
     expect(national.display).toBe('87 712 3456');
     expect(international.display).toBe('+220 87 712 3456');
-    // the number is written exactly as the preview reads it
-    expect(national.target).toBe('87 712 3456');
+    // A bare local number is written as plain digits (iOS strips added spacing);
+    // one that had a country code keeps the grouped international form.
+    expect(national.target).toBe('877123456');
     expect(international.target).toBe('+220 87 712 3456');
     // E.164 stays canonical (unbroken) for any programmatic use
     expect(international.e164).toBe('+220877123456');

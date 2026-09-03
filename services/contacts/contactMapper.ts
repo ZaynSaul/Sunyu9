@@ -8,6 +8,7 @@
 import type { ExistingPhone } from 'expo-contacts';
 
 import type { AppContact, AppPhoneNumber } from '@/types';
+import { friendlyPhoneLabel } from '@/utils/phoneLabel';
 
 /** The subset of contact fields this app reads. Structurally matches the */
 /** object returned by `Contact.getAllDetails([...])`. */
@@ -28,7 +29,7 @@ export function mapPhoneNumber(raw: ExistingPhone): AppPhoneNumber | null {
   }
   return {
     id: raw.id ?? null,
-    label: (raw.label ?? '').trim() || 'other',
+    label: friendlyPhoneLabel(raw.label),
     original,
     digits: original.replace(/\D+/g, ''),
   };
