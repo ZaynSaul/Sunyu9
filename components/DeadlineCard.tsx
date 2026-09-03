@@ -79,6 +79,9 @@ const styles = StyleSheet.create({
   big: {
     color: colors.brandDark,
     fontSize: 30,
+    // Explicit — otherwise the base Text's `body` lineHeight (~23) wins over
+    // this 30px size and iOS clips the glyphs into the shorter line box.
+    lineHeight: 36,
     fontWeight: '800',
     marginTop: spacing.sm,
   },
