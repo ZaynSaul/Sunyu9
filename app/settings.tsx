@@ -6,7 +6,7 @@ import { DeadlineCard } from '@/components/DeadlineCard';
 import { LastMigrationCard } from '@/components/conversion/LastMigrationCard';
 import { OperatorLogo } from '@/components/conversion/OperatorLogo';
 import { Screen, Text } from '@/components/ui';
-import { IS_HARDENED_BUILD, SOURCE_URL } from '@/constants/app';
+import { SOURCE_URL } from '@/constants/app';
 import {
   NUMBERING_LAST_VERIFIED,
   NUMBERING_SOURCES,
@@ -14,6 +14,7 @@ import {
   OPERATOR_RULES,
   type OperatorRule,
 } from '@/constants/numbering';
+import { PRIVACY_VERIFICATION } from '@/constants/privacy';
 import { colors, radius, spacing } from '@/constants/theme';
 import { formatPlanDate } from '@/utils/deadline';
 
@@ -183,15 +184,7 @@ export default function SettingsScreen() {
           </Row>
         </Group>
 
-        <Group
-          title="Your privacy"
-          icon="lock-closed-outline"
-          footnote={
-            IS_HARDENED_BUILD
-              ? undefined
-              : 'This developer build keeps internet access so the code can reload while building. The published app has it removed.'
-          }
-        >
+        <Group title="Your privacy" icon="lock-closed-outline" footnote={PRIVACY_VERIFICATION.footnote}>
           {PRIVACY_POINTS.map((point, i) => (
             <Row key={point} first={i === 0}>
               <Ionicons
@@ -214,12 +207,10 @@ export default function SettingsScreen() {
             />
             <View style={styles.rowText}>
               <Text variant="body" weight="semibold">
-                Check it yourself
+                {PRIVACY_VERIFICATION.actionTitle}
               </Text>
               <Text variant="caption" tone="secondary">
-                {IS_HARDENED_BUILD
-                  ? 'Open Permissions — Sunyu9 has no Internet access to turn on.'
-                  : 'Open the app’s permissions in system settings.'}
+                {PRIVACY_VERIFICATION.actionSubtitle}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
