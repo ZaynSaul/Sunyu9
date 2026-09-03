@@ -114,9 +114,15 @@ export function convertNumber(raw: string): ConversionOutcome {
   }
 
   const e164 = toE164(newNational);
-  const grouped = normalized.hadCountryCode
+  // The single form shown in the preview *and* written to the contact — they
+  // must agree (the confirmation sheet is a promise of exactly what gets saved).
+  //   • had a country code  ->  `+220 87 701 2345`  (both OSes format E.164 well)
+  //   • bare local number   ->  `877012345`         (plain 9 digits — iOS strips
+  //     any spacing it can't format for a national number it has no rule for,
+  //     so grouping the stored value would only mislead)
+  const written = normalized.hadCountryCode
     ? `+${countryCallingCode} ${formatNewNational(newNational)}`
-    : formatNewNational(newNational);
+    : newNational;
 
   return {
     status: 'convertible',
@@ -125,14 +131,8 @@ export function convertNumber(raw: string): ConversionOutcome {
     oldNational: nsn,
     newNational,
     e164,
-    // Grouped `XX XXX XXXX` form for the preview UI only.
-    display: grouped,
+    display: written,
     hadCountryCode: normalized.hadCountryCode,
-    // What is written to the contact. A number that carried a country code keeps
-    // the grouped international form — both iOS and Android format it. A bare
-    // local number is written as plain 9 digits: iOS silently strips spacing it
-    // adds to a national number it has no formatting rule for, so grouping the
-    // stored value there would only mislead.
-    target: normalized.hadCountryCode ? grouped : newNational,
+    target: written,
   };
 }

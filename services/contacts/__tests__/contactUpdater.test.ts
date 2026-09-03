@@ -156,6 +156,47 @@ describe('applyMigration', () => {
     const saved = saveBackup.mock.calls.at(-1)![0] as MigrationBackup;
     expect(saved.contacts[0].originalPhones[1]).toEqual({ id: 'live-p2', number: '5551234' });
   });
+
+  it('converts only as many rows as the user selected when a number repeats', async () => {
+    // Two rows hold 7012345; the user selected only the "mobile" one.
+    const analysis = await analyzeContacts([
+      {
+        id: 'c1',
+        name: 'Awa',
+        givenName: null,
+        familyName: null,
+        phoneNumbers: [
+          { id: 's1', label: 'mobile', original: '7012345', digits: '7012345' },
+          { id: 's2', label: 'home', original: '7012345', digits: '7012345' },
+        ],
+      },
+    ]);
+    const mobileKey = analysis.actionable[0].numbers[0].key;
+    mockGetPhones.mockResolvedValue([
+      { id: 'live-1', label: '_$!<Mobile>!$_', number: '7012345' },
+      { id: 'live-2', label: '_$!<Home>!$_', number: '7012345' },
+    ]);
+
+    const result = await applyMigration({ analysis, selected: new Set([mobileKey]) });
+
+    expect(result.updatedNumbers).toBe(1);
+    expect(mockPatch).toHaveBeenCalledWith('c1', {
+      phones: [
+        { id: 'live-1', number: '877012345' },
+        { id: 'live-2', number: '7012345' }, // the unselected duplicate is left alone
+      ],
+    });
+  });
+
+  it('matches numbers stored with surrounding whitespace', async () => {
+    const { analysis, selected } = await planFor(contactWith([['mobile', '7012345']]));
+    mockGetPhones.mockResolvedValue([{ id: 'live-1', label: '_$!<Mobile>!$_', number: ' 7012345\n' }]);
+
+    const result = await applyMigration({ analysis, selected });
+
+    expect(result.updatedNumbers).toBe(1);
+    expect(mockPatch).toHaveBeenCalledWith('c1', { phones: [{ id: 'live-1', number: '877012345' }] });
+  });
 });
 
 // ── undoMigration ────────────────────────────────────────────────────────────
@@ -185,35 +226,40 @@ function makeBackup(overrides: Partial<MigrationBackup['contacts'][number]> = {}
 }
 
 describe('undoMigration', () => {
-  it('restores the recorded numbers without their stale ids', async () => {
+  it('reverts only the numbers it changed, keyed on the live ids', async () => {
+    // Post-apply state: p1 was converted, plus a number the user added since.
+    mockGetPhones.mockResolvedValue([
+      { id: 'new-1', label: '_$!<Mobile>!$_', number: '877012345' },
+      { id: 'new-2', label: '_$!<Work>!$_', number: '4441122' },
+      { id: 'new-3', label: '_$!<Home>!$_', number: '9990000' }, // added after apply
+    ]);
+
     const result = await undoMigration({ backup: makeBackup() });
 
     expect(result).toMatchObject({ restoredContacts: 1, failures: [] });
     expect(mockPatch).toHaveBeenCalledWith('c1', {
       phones: [
-        { label: '_$!<Mobile>!$_', number: '7012345' },
-        { label: '_$!<Work>!$_', number: '4441122' },
+        { id: 'new-1', number: '7012345' }, // reverted
+        { id: 'new-2', number: '4441122' }, // untouched
+        { id: 'new-3', number: '9990000' }, // the user's later addition survives
       ],
     });
   });
 
-  it('omits the label for an entry recorded without one', async () => {
-    await undoMigration({
-      backup: makeBackup({
-        originalPhones: [
-          { id: 'p1', label: 'mobile', number: '7012345' },
-          { id: 'p2', number: '5551234' },
-        ],
-      }),
-    });
+  it('does nothing when the converted number is no longer on the contact', async () => {
+    mockGetPhones.mockResolvedValue([
+      { id: 'new-1', label: '_$!<Mobile>!$_', number: '5551111' }, // user changed it
+    ]);
 
-    expect(mockPatch).toHaveBeenCalledWith('c1', {
-      phones: [{ label: '_$!<Mobile>!$_', number: '7012345' }, { number: '5551234' }],
-    });
+    const result = await undoMigration({ backup: makeBackup() });
+
+    expect(mockPatch).not.toHaveBeenCalled();
+    expect(result.restoredContacts).toBe(0);
+    expect(result.failures).toEqual([]);
   });
 
-  it('does not wipe a contact whose original phone list was not recorded', async () => {
-    const result = await undoMigration({ backup: makeBackup({ originalPhones: [] }) });
+  it('records a failure when no changes were recorded for the contact', async () => {
+    const result = await undoMigration({ backup: makeBackup({ originalPhones: [], newPhones: [] }) });
 
     expect(mockPatch).not.toHaveBeenCalled();
     expect(result.restoredContacts).toBe(0);

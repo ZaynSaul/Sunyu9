@@ -3,14 +3,15 @@
  *
  * The only place in the app that writes to contacts. Uses the SDK 57 class API.
  *
- * `applyMigration` re-reads each contact's live phone list right before writing
- * it, then patches only the numbers that still match a planned conversion,
- * keyed on the *current* entry ids. This matters on iOS, which re-generates a
- * phone entry's identifier every time the contact is modified — the ids from
- * the earlier scan can be stale, and `patch()` keyed on a stale id drops the
- * entry (iOS) or its data row (Android), losing the number.
+ * Both `applyMigration` and `undoMigration` re-read each contact's live phone
+ * list right before writing it and patch keyed on the *current* entry ids. This
+ * matters on iOS, which re-generates a phone entry's identifier every time the
+ * contact is modified — an id from the earlier scan / backup can be stale, and
+ * `patch()` keyed on a stale id drops the entry (iOS) or its data row (Android),
+ * losing the number. Numbers are matched by value, one replacement consumed per
+ * row, so unrelated edits the user made in between are left untouched.
  *
- * Safety order:
+ * Safety order for apply:
  *   1. read the contact, build + write the patch
  *   2. record its backup entry (from the live list we just read)
  *   3. persist the growing backup every few contacts (and at the end)
@@ -20,7 +21,7 @@ import { Contact, type ExistingPhone } from 'expo-contacts';
 
 import { saveBackup } from '@/services/contacts/contactBackup';
 import type { ContactAnalysis } from '@/services/contacts/contactAnalyzer';
-import { makeBatchId, planMigration, type ContactConversionPlan } from '@/services/contacts/migrationPlan';
+import { makeBatchId, planMigration } from '@/services/contacts/migrationPlan';
 import type {
   MigrationBackup,
   MigrationFailure,
@@ -33,52 +34,56 @@ import { friendlyPhoneLabel, nativePhoneLabel } from '@/utils/phoneLabel';
 
 const PERSIST_EVERY = 20;
 
+const norm = (value: string | null | undefined): string => (value ?? '').trim();
+
 /** Drop an empty label so we never write one the user didn't set. */
 function withLabel(entry: { id?: string; number: string }, label: string): PatchPhone {
   return label ? { ...entry, label } : entry;
 }
 
-interface ReconciledContact {
-  /** The minimal patch payload: every live row, converted rows carrying the new number. */
-  patch: PatchPhone[];
-  /** The live list before the write — the backup's `originalPhones`. */
-  originalPhones: PatchPhone[];
-  /** The live list after the write — the backup's `newPhones`. */
-  newPhones: PatchPhone[];
-  /** Tags of the rows actually changing. */
-  changedTags: string[];
+interface Replacement {
+  from: string;
+  to: string;
 }
 
 /**
- * Reconcile a plan against the contact's current phone list. Numbers are matched
- * by value, so a conversion whose source number is no longer on the contact is
- * simply skipped.
+ * Rewrite a contact's live phone list, swapping each `{ from → to }` into the
+ * first row that still holds `from` (one replacement per row). Every row is kept
+ * in the payload so nothing is deleted; rows with an id carry no label so the OS
+ * keeps the existing one.
  */
-function reconcile(plan: ContactConversionPlan, live: ExistingPhone[]): ReconciledContact {
+function rewrite(
+  live: ExistingPhone[],
+  replacements: Replacement[],
+): { patch: PatchPhone[]; changedTags: string[]; appliedCount: number } {
+  const pending = replacements.map((r) => ({ from: norm(r.from), to: r.to }));
+  const before = pending.length;
   const patch: PatchPhone[] = [];
-  const originalPhones: PatchPhone[] = [];
-  const newPhones: PatchPhone[] = [];
   const changedTags: string[] = [];
 
   live.forEach((phone, index) => {
-    const current = phone.number ?? '';
-    const friendly = friendlyPhoneLabel(phone.label);
-    const id = phone.id;
-    const conversion = plan.conversions.find((c) => c.from === current && c.to !== current);
-    const next = conversion ? conversion.to : current;
+    const current = norm(phone.number);
+    const hit = pending.findIndex((r) => r.from === current && r.to !== current);
+    const next = hit >= 0 ? pending.splice(hit, 1)[0].to : current;
 
-    originalPhones.push(withLabel({ id, number: current }, friendly));
-    newPhones.push(withLabel({ id, number: next }, friendly));
-
-    if (conversion) {
-      changedTags.push(id ?? `i${index}`);
+    if (next !== current) {
+      changedTags.push(phone.id ?? `i${index}`);
     }
-    // Keep every row present (so nothing is deleted), but only send a label for
-    // an id-less row — for rows with an id the OS keeps the existing label.
-    patch.push(id ? { id, number: next } : withLabel({ number: next }, nativePhoneLabel(friendly)));
+    patch.push(
+      phone.id
+        ? { id: phone.id, number: next }
+        : withLabel({ number: next }, nativePhoneLabel(friendlyPhoneLabel(phone.label))),
+    );
   });
 
-  return { patch, originalPhones, newPhones, changedTags };
+  return { patch, changedTags, appliedCount: before - pending.length };
+}
+
+/** The live list as `PatchPhone[]` (friendly labels) for a backup snapshot. */
+function snapshot(live: ExistingPhone[], numberAt: (index: number) => string): PatchPhone[] {
+  return live.map((phone, index) =>
+    withLabel({ id: phone.id, number: numberAt(index) }, friendlyPhoneLabel(phone.label)),
+  );
 }
 
 export interface ApplyMigrationParams {
@@ -120,15 +125,15 @@ export async function applyMigration({
     const plan = plans[i];
     try {
       const live = (await new Contact(plan.contactId).getPhones()) as ExistingPhone[];
-      const { patch, originalPhones, newPhones, changedTags } = reconcile(plan, live);
+      const { patch, changedTags } = rewrite(live, plan.conversions);
 
       if (changedTags.length > 0) {
         await new Contact(plan.contactId).patch({ phones: patch });
         backup.contacts.push({
           contactId: plan.contactId,
           contactName: plan.contactName,
-          originalPhones,
-          newPhones,
+          originalPhones: snapshot(live, (idx) => norm(live[idx].number)),
+          newPhones: snapshot(live, (idx) => patch[idx].number),
           changedPhoneTags: changedTags,
         });
         updatedContacts += 1;
@@ -175,18 +180,29 @@ export async function undoMigration({
   for (let i = 0; i < total; i++) {
     const entry = backup.contacts[i];
     try {
-      // The backup's ids come from the apply-time read and iOS has since
-      // rotated them, so `patch()` keyed on them would drop the entries. Send
-      // id-less phones instead: `patch()` treats an all-new list as a full
-      // replace on both platforms, which is exactly the snapshot restore we want.
-      const phones = entry.originalPhones.map((phone) =>
-        withLabel({ number: phone.number }, nativePhoneLabel(phone.label ?? '')),
-      );
-      if (phones.length === 0) {
-        throw new Error('No original phone numbers were recorded for this contact.');
+      // Revert just the numbers this run changed (new value → original), matched
+      // against the contact's live rows by value — so a phone the user added or
+      // corrected between apply and undo is left alone.
+      const restorations: Replacement[] = entry.originalPhones
+        .map((original, idx) => ({
+          from: norm(entry.newPhones[idx]?.number ?? original.number),
+          to: original.number,
+        }))
+        .filter((r) => r.from !== norm(r.to));
+
+      if (restorations.length === 0) {
+        throw new Error('No changes were recorded for this contact.');
       }
-      await new Contact(entry.contactId).patch({ phones });
-      restoredContacts += 1;
+
+      const live = (await new Contact(entry.contactId).getPhones()) as ExistingPhone[];
+      const { patch, appliedCount } = rewrite(live, restorations);
+
+      if (appliedCount > 0) {
+        await new Contact(entry.contactId).patch({ phones: patch });
+        restoredContacts += 1;
+      }
+      // appliedCount 0 → none of this run's converted numbers are still on the
+      // contact; the change is already gone, nothing to undo.
     } catch (error) {
       failures.push({
         contactId: entry.contactId,

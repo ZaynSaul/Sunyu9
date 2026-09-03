@@ -67,7 +67,7 @@ describe('planContactConversions', () => {
     ]);
   });
 
-  it('de-dupes when two rows hold the same stored number', async () => {
+  it('emits one entry per selected row, even when two rows hold the same number', async () => {
     const analysis = await analyze([
       contact('a', [
         ['mobile', '7123456', 'p1'],
@@ -75,7 +75,14 @@ describe('planContactConversions', () => {
       ]),
     ]);
     const analyzed = analysis.actionable[0];
+    // both selected → two conversions; the writer consumes one per live row
     expect(planContactConversions(analyzed, allKeys(analysis))).toEqual([
+      { from: '7123456', to: '877123456' },
+      { from: '7123456', to: '877123456' },
+    ]);
+    // only the mobile selected → one conversion, so only one row is converted
+    const onlyMobile = new Set([analyzed.numbers[0].key]);
+    expect(planContactConversions(analyzed, onlyMobile)).toEqual([
       { from: '7123456', to: '877123456' },
     ]);
   });

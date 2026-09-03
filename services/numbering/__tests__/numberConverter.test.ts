@@ -37,25 +37,24 @@ describe('convertNumber — convertible old numbers', () => {
     expect(outcome.newNational).toBe('877123456');
   });
 
-  it('groups the migrated national number as XX XXX XXXX', () => {
+  it('writes a bare local number as plain 9 digits (iOS strips added spacing)', () => {
     const outcome = run('7123456');
     if (outcome.status !== 'convertible') throw new Error('expected convertible');
-    expect(outcome.display).toBe('87 712 3456');
-    // raw 9-digit form is still available for classification / E.164
+    // display and target agree — the preview is a promise of what gets written
+    expect(outcome.display).toBe('877123456');
+    expect(outcome.target).toBe('877123456');
     expect(outcome.newNational).toBe('877123456');
   });
 
-  it('keeps the +220 in the display when the original had a country code', () => {
+  it('keeps the grouped +220 form when the original had a country code', () => {
     const national = run('7123456');
     const international = run('+220 712 3456');
     if (national.status !== 'convertible' || international.status !== 'convertible') {
       throw new Error('expected convertible');
     }
-    expect(national.display).toBe('87 712 3456');
-    expect(international.display).toBe('+220 87 712 3456');
-    // A bare local number is written as plain digits (iOS strips added spacing);
-    // one that had a country code keeps the grouped international form.
+    expect(national.display).toBe('877123456');
     expect(national.target).toBe('877123456');
+    expect(international.display).toBe('+220 87 712 3456');
     expect(international.target).toBe('+220 87 712 3456');
     // E.164 stays canonical (unbroken) for any programmatic use
     expect(international.e164).toBe('+220877123456');
@@ -134,7 +133,7 @@ describe('idempotency', () => {
     if (first.status !== 'convertible') throw new Error('expected convertible');
     expect(run(first.newNational).status).toBe('already-migrated');
     expect(run(first.e164).status).toBe('already-migrated');
-    // the grouped form we actually write back must also be recognised on re-scan
+    // the exact form we write back must also be recognised on re-scan
     expect(run(first.target).status).toBe('already-migrated');
     expect(run('+220 87 712 3456').status).toBe('already-migrated');
   });

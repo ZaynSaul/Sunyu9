@@ -23,7 +23,11 @@ export interface NumberConversion {
 export interface ContactConversionPlan {
   contactId: string;
   contactName: string;
-  /** Non-empty — a contact with nothing selected is dropped. Matched by value. */
+  /**
+   * One entry per phone row the user selected — NOT de-duped. The writer
+   * matches these against the contact's live rows by value, consuming one per
+   * row, so selecting one of two identical numbers converts exactly one.
+   */
   conversions: NumberConversion[];
 }
 
@@ -42,7 +46,7 @@ export function groupSelectionByContact(
   return byId;
 }
 
-/** The `{ from, to }` conversions the user selected for one contact, de-duped. */
+/** One `{ from, to }` per selected, convertible phone row on this contact. */
 export function planContactConversions(
   analyzed: AnalyzedContact,
   selected: Set<string>,
@@ -50,15 +54,11 @@ export function planContactConversions(
   const conversions: NumberConversion[] = [];
   for (const number of analyzed.numbers) {
     if (
-      !selected.has(number.key) ||
-      number.outcome.status !== 'convertible' ||
-      number.outcome.target === number.phone.original
+      selected.has(number.key) &&
+      number.outcome.status === 'convertible' &&
+      number.outcome.target !== number.phone.original
     ) {
-      continue;
-    }
-    const from = number.phone.original;
-    if (!conversions.some((c) => c.from === from)) {
-      conversions.push({ from, to: number.outcome.target });
+      conversions.push({ from: number.phone.original, to: number.outcome.target });
     }
   }
   return conversions;
