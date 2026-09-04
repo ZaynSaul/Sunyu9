@@ -6,6 +6,7 @@ import {
   Easing,
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
@@ -103,7 +104,11 @@ export function BottomSheet({ visible, onClose, children, dismissible = true }: 
         <Animated.View
           style={[
             styles.sheet,
-            { paddingBottom: insets.bottom + spacing.xl, transform: [{ translateY }] },
+            {
+              // Never taller than the screen below the status bar — the rest scrolls.
+              maxHeight: SCREEN_H - insets.top - spacing.xl,
+              transform: [{ translateY }],
+            },
           ]}
         >
           <View style={styles.grabber}>
@@ -120,7 +125,15 @@ export function BottomSheet({ visible, onClose, children, dismissible = true }: 
               </Pressable>
             ) : null}
           </View>
-          {children}
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={{ paddingBottom: insets.bottom + spacing.xl }}
+            bounces={false}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {children}
+          </ScrollView>
         </Animated.View>
       </View>
     </Modal>
@@ -146,6 +159,10 @@ const styles = StyleSheet.create({
     borderTopRightRadius: radius.xl,
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.md,
+  },
+  // flexShrink lets the sheet hug short content but cap + scroll tall content.
+  scroll: {
+    flexShrink: 1,
   },
   grabber: {
     height: 36,

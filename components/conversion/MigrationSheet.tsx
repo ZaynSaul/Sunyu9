@@ -10,20 +10,11 @@ import { selectionStats } from '@/store/analysisStore';
 import { useMigrationStore, type ApplyOperation } from '@/store/migrationStore';
 import { formatCount } from '@/utils/format';
 
-const ASSURANCES: Record<ApplyOperation, string[]> = {
-  add: [
-    'Your numbers are saved on this phone first.',
-    'Only the numbers you picked get a new number added.',
-    'Undo any time — the new numbers come off and the old labels go back.',
-    'Nothing goes online. It all happens on your phone.',
-  ],
-  replace: [
-    'Your original numbers are saved on this phone first.',
-    'Only the numbers you picked are changed.',
-    'Undo any time — every original number is put back.',
-    'Nothing goes online. It all happens on your phone.',
-  ],
-};
+const ASSURANCES = [
+  'Your numbers are saved on this phone first.',
+  'Only the numbers you picked are touched.',
+  'Undo any time. Nothing ever goes online.',
+];
 
 type Mode = 'confirm' | 'applying' | 'applyError' | 'success' | 'undoing' | 'undone';
 
@@ -129,7 +120,7 @@ export function MigrationSheet({ visible, analysis, selected, onCancel, onDone }
           {example ? <NumberPreview old={example.old} next={example.next} choice={choice} /> : null}
 
           <View style={styles.card}>
-            {ASSURANCES[choice].map((line) => (
+            {ASSURANCES.map((line) => (
               <View key={line} style={styles.assuranceRow}>
                 <Ionicons
                   name="checkmark-circle"
