@@ -6,7 +6,7 @@
  * keeps the UI responsive while checking thousands of numbers). The per-contact
  * function `analyzeContact` is fully synchronous and unit-tested.
  */
-import { convertNumber } from '@/services/numbering';
+import { convertNumber, normalizeNumber } from '@/services/numbering';
 import type { AppContact, AppPhoneNumber, ConversionOutcome, ProgressCallback } from '@/types';
 
 /** Stable identity for a single phone entry across screens and selection state. */
@@ -20,6 +20,12 @@ export interface AnalyzedPhoneNumber {
   outcome: ConversionOutcome;
   /** `outcome.status === 'convertible'`. */
   convertible: boolean;
+  /**
+   * This is a convertible old number **and** another row on the same contact
+   * already holds its 9-digit twin — so the "add the new number" pass has
+   * nothing to do here, and the "remove old numbers" pass can drop this row.
+   */
+  alreadyPaired: boolean;
 }
 
 export interface AnalyzedContact {
@@ -47,6 +53,23 @@ export interface ContactAnalysis {
   summary: AnalysisSummary;
 }
 
+/**
+ * The bare 9-digit national number this row represents, if any — so a
+ * convertible old number can tell whether its migrated twin is already saved
+ * on the same contact. `already-migrated` rows expose it directly; anything
+ * else is normalized (`+220 87 712 3456` → `877123456`).
+ */
+function nineDigitKey(analyzed: AnalyzedPhoneNumber): string | null {
+  if (analyzed.outcome.status === 'already-migrated') {
+    return analyzed.outcome.newNational;
+  }
+  if (analyzed.outcome.status === 'convertible') {
+    return null; // this row *is* the old number, not the twin
+  }
+  const nsn = normalizeNumber(analyzed.phone.original).nsn;
+  return nsn && nsn.length === 9 ? nsn : null;
+}
+
 export function analyzeContact(contact: AppContact): AnalyzedContact {
   const numbers: AnalyzedPhoneNumber[] = contact.phoneNumbers.map((phone, index) => {
     const outcome = convertNumber(phone.original);
@@ -55,8 +78,17 @@ export function analyzeContact(contact: AppContact): AnalyzedContact {
       phone,
       outcome,
       convertible: outcome.status === 'convertible',
+      alreadyPaired: false,
     };
   });
+
+  for (const number of numbers) {
+    if (number.outcome.status !== 'convertible') {
+      continue;
+    }
+    const twin = number.outcome.newNational;
+    number.alreadyPaired = numbers.some((other) => other !== number && nineDigitKey(other) === twin);
+  }
 
   return {
     contact,

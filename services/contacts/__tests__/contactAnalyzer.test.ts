@@ -45,6 +45,33 @@ describe('analyzeContact', () => {
     expect(keys[0]).toBe(phoneKey('c1', analyzed.contact.phoneNumbers[0], 0));
   });
 
+  it('marks a convertible number as already paired when its 9-digit twin is present', () => {
+    const twinForms = analyzeContact(
+      contact('c', [
+        ['mobile', '7123456'], // old
+        ['work', '877123456'], // bare 9-digit twin
+      ]),
+    );
+    expect(twinForms.numbers[0].alreadyPaired).toBe(true);
+    expect(twinForms.numbers[1].alreadyPaired).toBe(false);
+
+    const plusForm = analyzeContact(
+      contact('d', [
+        ['mobile', '7123456'],
+        ['work', '+220 87 712 3456'], // same twin, international form
+      ]),
+    );
+    expect(plusForm.numbers[0].alreadyPaired).toBe(true);
+
+    const noTwin = analyzeContact(
+      contact('e', [
+        ['mobile', '7123456'],
+        ['work', '833123456'], // a different operator's 9-digit number
+      ]),
+    );
+    expect(noTwin.numbers[0].alreadyPaired).toBe(false);
+  });
+
   it('carries the write target through the outcome', () => {
     const [national, international] = analyzeContact(
       contact('c', [['mobile', '7123456'], ['work', '+220 7123456']]),

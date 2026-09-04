@@ -12,6 +12,7 @@ const backup: MigrationBackup = {
   id: 'mig_2026-09-04T10-15-00-000Z',
   createdAt: '2026-09-04T10:15:00.000Z',
   status: 'applied',
+  operation: 'replace',
   contacts: [
     {
       contactId: 'c1',
@@ -47,6 +48,34 @@ describe('backupToCsv', () => {
   it('quotes cells containing commas', () => {
     const lines = backupToCsv(backup).split('\r\n');
     expect(lines[3]).toBe('"Fatou, Ceesay",mobile,3123456,833123456,yes');
+  });
+
+  it('flags the appended row of an "add" backup', () => {
+    const addBackup: MigrationBackup = {
+      id: 'mig_add',
+      createdAt: '2026-09-04T10:15:00.000Z',
+      status: 'applied',
+      operation: 'add',
+      contacts: [
+        {
+          contactId: 'c1',
+          contactName: 'Musa',
+          changedPhoneTags: ['p1'],
+          originalPhones: [{ id: 'p1', label: 'mobile', number: '7123456' }],
+          newPhones: [
+            { id: 'p1', label: 'mobile (old)', number: '7123456' },
+            { label: 'mobile', number: '877123456' },
+          ],
+          rowChanges: [
+            { op: 'relabel', rowId: 'p1', value: '7123456', fromLabel: 'mobile', toLabel: 'mobile (old)' },
+            { op: 'add', value: '877123456', label: 'mobile', pairedOldValue: '7123456' },
+          ],
+        },
+      ],
+    };
+    const lines = backupToCsv(addBackup).split('\r\n');
+    expect(lines[1]).toBe('Musa,mobile,7123456,7123456,no');
+    expect(lines[2]).toBe('Musa,mobile,7123456,877123456,added');
   });
 });
 

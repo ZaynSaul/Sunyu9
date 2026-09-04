@@ -95,17 +95,17 @@ reads and writes device contacts, so it needs real native code. `android/` and
 Generation); run prebuild whenever `app.config.js` or native deps change.
 
 ```bash
-npm install
+yarn install
 
 # Generate native projects + build + run a debug build (needs Android SDK / Xcode)
-npm run android            # expo run:android   (keeps INTERNET for Metro)
-npm run ios                # expo run:ios
+yarn android            # expo run:android   (keeps INTERNET for Metro)
+yarn ios                # expo run:ios
 
 # Just (re)generate the native projects
-npm run prebuild:android   # expo prebuild -p android --clean
+yarn prebuild:android   # expo prebuild -p android --clean
 
 # Release build — strips INTERNET / network permissions (APP_VARIANT=release)
-npm run build:android:release
+yarn build:android:release
 ```
 
 EAS profiles ([eas.json](eas.json)): `development` (debug APK), `preview`
@@ -115,9 +115,9 @@ EAS profiles ([eas.json](eas.json)): `development` (debug APK), `preview`
 Other commands:
 
 ```bash
-npm run typecheck   # tsc --noEmit
-npm test            # jest
-npm start           # Metro (for an already-installed build)
+yarn typecheck   # tsc --noEmit
+yarn test        # jest
+yarn start       # Metro (for an already-installed build)
 ```
 
 ## Layout

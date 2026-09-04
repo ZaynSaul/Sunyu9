@@ -1,9 +1,11 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Redirect, router, useNavigation } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   BackHandler,
   FlatList,
+  Pressable,
   StyleSheet,
   View,
   type ListRenderItem,
@@ -12,9 +14,10 @@ import {
 import { ContactResultCard } from '@/components/conversion/ContactResultCard';
 import { MigrationSheet } from '@/components/conversion/MigrationSheet';
 import { Button, ProgressBar, Screen, Text } from '@/components/ui';
-import { colors, spacing } from '@/constants/theme';
+import { colors, radius, spacing } from '@/constants/theme';
 import type { AnalyzedContact } from '@/services/contacts/contactAnalyzer';
-import { selectionStats, useAnalysisStore } from '@/store/analysisStore';
+import { loadUiFlags, setUiFlag } from '@/services/storage/uiFlags';
+import { pendingTotals, selectionStats, useAnalysisStore } from '@/store/analysisStore';
 import { useContactStore } from '@/store/contactStore';
 import { useMigrationStore } from '@/store/migrationStore';
 import { formatCount } from '@/utils/format';
@@ -48,6 +51,16 @@ export default function ResultsScreen() {
   const resetMigration = useMigrationStore((s) => s.reset);
 
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [introVisible, setIntroVisible] = useState(false);
+
+  useEffect(() => {
+    void loadUiFlags().then((flags) => setIntroVisible(!flags.reviewIntroDismissed));
+  }, []);
+
+  const dismissIntro = useCallback(() => {
+    setIntroVisible(false);
+    void setUiFlag('reviewIntroDismissed', true);
+  }, []);
 
   const busy = applyStatus === 'applying' || undoStatus === 'undoing';
 
@@ -155,19 +168,23 @@ export default function ResultsScreen() {
   // ── review ─────────────────────────────────────────────────────────────────
   const { summary } = analysis;
   const stats = selectionStats(analysis, selected);
-  const allSelected = stats.numbers === summary.convertibleNumbers && summary.convertibleNumbers > 0;
+  const pending = pendingTotals(analysis);
+  const allSelected = stats.numbers === pending.numbers && pending.numbers > 0;
 
-  if (analysis.actionable.length === 0) {
+  if (pending.numbers === 0) {
+    const allAdded = analysis.actionable.length > 0;
     return (
       <Screen>
         <View style={styles.empty}>
           <Text variant="title" center tone="success">
-            Your contacts are up to date
+            {allAdded ? 'The new numbers are already added' : 'Your contacts are up to date'}
           </Text>
           <Text variant="body" tone="secondary" center>
-            We checked {formatCount(summary.numbersScanned)} numbers in{' '}
-            {formatCount(summary.contactsScanned)} contacts. None of them use the old 7-digit
-            format.
+            {allAdded
+              ? 'Every old number here already has its new 9-digit version saved. You can remove the old numbers once your contacts have switched.'
+              : `We checked ${formatCount(summary.numbersScanned)} numbers in ${formatCount(
+                  summary.contactsScanned,
+                )} contacts. None of them use the old 7-digit format.`}
           </Text>
           <Button title="Done" onPress={handleDone} />
         </View>
@@ -190,13 +207,14 @@ export default function ResultsScreen() {
         removeClippedSubviews
         ListHeaderComponent={
           <View style={styles.header}>
+            {introVisible ? <HowItWorks onDismiss={dismissIntro} /> : null}
+
             <Text variant="title">
-              {formatCount(summary.convertibleNumbers)}{' '}
-              {summary.convertibleNumbers === 1 ? 'number' : 'numbers'} to update
+              {formatCount(pending.numbers)} {pending.numbers === 1 ? 'number' : 'numbers'} to update
             </Text>
             <Text variant="body" tone="secondary">
-              In {formatCount(summary.actionableContacts)}{' '}
-              {summary.actionableContacts === 1 ? 'contact' : 'contacts'}. Review below, then
+              In {formatCount(pending.contacts)}{' '}
+              {pending.contacts === 1 ? 'contact' : 'contacts'}. Review below, then
               update the ones you want. Nothing is saved until you confirm.
             </Text>
             <View style={styles.metaRow}>
@@ -258,6 +276,40 @@ export default function ResultsScreen() {
 }
 
 // ── shared sub-screens ───────────────────────────────────────────────────────
+
+const HOW_STEPS: { icon: React.ComponentProps<typeof Ionicons>['name']; text: string }[] = [
+  { icon: 'add-circle-outline', text: 'We add the new number' },
+  { icon: 'time-outline', text: 'Both work until 30 Nov' },
+  { icon: 'trash-outline', text: 'Remove the old ones later' },
+];
+
+function HowItWorks({ onDismiss }: { onDismiss: () => void }) {
+  return (
+    <View style={styles.how}>
+      <View style={styles.howHead}>
+        <Text variant="label" tone="secondary">
+          HOW THIS WORKS
+        </Text>
+        <Pressable
+          onPress={onDismiss}
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel="Hide"
+        >
+          <Ionicons name="close" size={16} color={colors.textSecondary} />
+        </Pressable>
+      </View>
+      {HOW_STEPS.map((step, i) => (
+        <View key={step.text} style={styles.howRow}>
+          <Ionicons name={step.icon} size={18} color={colors.brand} />
+          <Text variant="body">
+            {i + 1}. {step.text}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
 
 function LoadingState({
   title,
@@ -344,6 +396,24 @@ const styles = StyleSheet.create({
   header: {
     gap: spacing.sm,
     paddingVertical: spacing.lg,
+  },
+  how: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.lg,
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  howHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.xs,
+  },
+  howRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
   },
   metaRow: {
     flexDirection: 'row',

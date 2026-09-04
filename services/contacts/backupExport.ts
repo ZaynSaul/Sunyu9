@@ -20,17 +20,37 @@ export function backupToCsv(backup: MigrationBackup): string {
   const rows: string[][] = [['Contact', 'Label', 'Old number', 'New number', 'Changed']];
 
   for (const contact of backup.contacts) {
+    const removed = new Set(
+      (contact.rowChanges ?? []).filter((c) => c.op === 'remove').map((c) => c.value),
+    );
+
     contact.originalPhones.forEach((original, index) => {
-      const next = contact.newPhones[index];
-      const newNumber = next?.number ?? original.number;
+      const newNumber = contact.newPhones[index]?.number ?? original.number;
+      const changed = removed.has(original.number)
+        ? 'removed'
+        : original.number === newNumber
+          ? 'no'
+          : 'yes';
       rows.push([
         contact.contactName,
         original.label || 'other',
         original.number,
-        newNumber,
-        original.number === newNumber ? 'no' : 'yes',
+        removed.has(original.number) ? '' : newNumber,
+        changed,
       ]);
     });
+
+    for (const change of contact.rowChanges ?? []) {
+      if (change.op === 'add') {
+        rows.push([
+          contact.contactName,
+          change.label || 'other',
+          change.pairedOldValue,
+          change.value,
+          'added',
+        ]);
+      }
+    }
   }
 
   return rows.map((row) => row.map(csvCell).join(',')).join('\r\n');

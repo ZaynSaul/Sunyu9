@@ -52,6 +52,12 @@ export function LastMigrationCard() {
 
   const when = new Date(backup.createdAt);
   const whenLabel = Number.isNaN(when.getTime()) ? 'recently' : when.toLocaleDateString();
+  const numberWord = changedNumbers === 1 ? 'number' : 'numbers';
+  const contactWord = backup.contacts.length === 1 ? 'contact' : 'contacts';
+  const summary =
+    backup.operation === 'add'
+      ? `On ${whenLabel} you added the new number for ${formatCount(changedNumbers)} ${numberWord} across ${formatCount(backup.contacts.length)} ${contactWord}.`
+      : `On ${whenLabel} you updated ${formatCount(changedNumbers)} ${numberWord} across ${formatCount(backup.contacts.length)} ${contactWord}.`;
 
   if (undoStatus === 'undoing') {
     const { done, total } = progress;
@@ -68,11 +74,7 @@ export function LastMigrationCard() {
 
   return (
     <View style={styles.block}>
-      <Text variant="body">
-        On {whenLabel} you updated {formatCount(changedNumbers)}{' '}
-        {changedNumbers === 1 ? 'number' : 'numbers'} across {formatCount(backup.contacts.length)}{' '}
-        {backup.contacts.length === 1 ? 'contact' : 'contacts'}.
-      </Text>
+      <Text variant="body">{summary}</Text>
 
       {undoStatus === 'error' ? (
         <Text variant="caption" tone="danger">

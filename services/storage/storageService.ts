@@ -14,6 +14,8 @@ const NAMESPACE = 'gn9:';
 export type StorageKey =
   /** The most recent migration batch, for Undo / CSV export. */
   | 'migration:last'
+  /** Small UI flags — e.g. one-time hints the user has dismissed. */
+  | 'ui:flags'
   /** Reserved for user settings — not written yet. */
   | 'settings';
 

@@ -6,6 +6,7 @@ import {
   Easing,
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
@@ -19,6 +20,11 @@ interface BottomSheetProps {
   visible: boolean;
   onClose: () => void;
   children: ReactNode;
+  /**
+   * Pinned below the scroll area — action buttons that should stay reachable
+   * however tall the content is.
+   */
+  footer?: ReactNode;
   /**
    * When `false`, the backdrop tap, the Android back button and the close (×)
    * button all do nothing — the content must provide its own way out. Used
@@ -37,7 +43,13 @@ interface BottomSheetProps {
  * gesture-handler) to keep this offline utility's dependency surface and APK
  * small. Same visual language as the sheet in the Deliva app.
  */
-export function BottomSheet({ visible, onClose, children, dismissible = true }: BottomSheetProps) {
+export function BottomSheet({
+  visible,
+  onClose,
+  children,
+  footer,
+  dismissible = true,
+}: BottomSheetProps) {
   const requestClose = dismissible ? onClose : () => {};
   const insets = useSafeAreaInsets();
 
@@ -103,7 +115,11 @@ export function BottomSheet({ visible, onClose, children, dismissible = true }: 
         <Animated.View
           style={[
             styles.sheet,
-            { paddingBottom: insets.bottom + spacing.xl, transform: [{ translateY }] },
+            {
+              // Never taller than the screen below the status bar — the rest scrolls.
+              maxHeight: SCREEN_H - insets.top - spacing.xl,
+              transform: [{ translateY }],
+            },
           ]}
         >
           <View style={styles.grabber}>
@@ -120,7 +136,22 @@ export function BottomSheet({ visible, onClose, children, dismissible = true }: 
               </Pressable>
             ) : null}
           </View>
-          {children}
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={{
+              paddingBottom: footer ? spacing.lg : insets.bottom + spacing.xl,
+            }}
+            bounces={false}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {children}
+          </ScrollView>
+          {footer ? (
+            <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.md }]}>
+              {footer}
+            </View>
+          ) : null}
         </Animated.View>
       </View>
     </Modal>
@@ -146,6 +177,17 @@ const styles = StyleSheet.create({
     borderTopRightRadius: radius.xl,
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.md,
+  },
+  // flexShrink lets the sheet hug short content but cap + scroll tall content.
+  scroll: {
+    flexShrink: 1,
+  },
+  footer: {
+    paddingTop: spacing.md,
+    gap: spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    backgroundColor: colors.background,
   },
   grabber: {
     height: 36,

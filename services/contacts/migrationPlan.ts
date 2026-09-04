@@ -12,6 +12,18 @@ import type {
   ContactAnalysis,
 } from '@/services/contacts/contactAnalyzer';
 
+/**
+ * How the run treats each selected number.
+ *  - `replace` — one `{from,to}` per selected row (NOT de-duped: picking one of
+ *    two identical rows converts exactly one).
+ *  - `add`     — keep the old number, add the new one. De-duped by value per
+ *    contact (a second identical old row would only produce a duplicate new
+ *    row), and rows whose 9-digit twin is already saved are skipped.
+ */
+export type ConversionMode = 'replace' | 'add';
+
+const norm = (value: string): string => value.trim();
+
 /** One number the user picked, as stored on the device → its converted form. */
 export interface NumberConversion {
   /** The number exactly as it is stored on the contact today. */
@@ -50,16 +62,31 @@ export function groupSelectionByContact(
 export function planContactConversions(
   analyzed: AnalyzedContact,
   selected: Set<string>,
+  mode: ConversionMode = 'replace',
 ): NumberConversion[] {
   const conversions: NumberConversion[] = [];
+  const seen = new Set<string>();
   for (const number of analyzed.numbers) {
     if (
-      selected.has(number.key) &&
-      number.outcome.status === 'convertible' &&
-      number.outcome.target !== number.phone.original
+      !selected.has(number.key) ||
+      number.outcome.status !== 'convertible' ||
+      number.outcome.target === number.phone.original
     ) {
-      conversions.push({ from: number.phone.original, to: number.outcome.target });
+      continue;
     }
+    if (mode === 'add') {
+      // The new number is already on this contact — nothing to add.
+      if (number.alreadyPaired) {
+        continue;
+      }
+      // A duplicate old row would only add a duplicate new row.
+      const key = norm(number.phone.original);
+      if (seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+    }
+    conversions.push({ from: number.phone.original, to: number.outcome.target });
   }
   return conversions;
 }
@@ -69,9 +96,10 @@ export function planContactConversions(
  * `onlyContactIds`, when given, restricts the run to those contacts (used to
  * retry the ones that failed).
  */
-export function planMigration(
+export function planConversions(
   analysis: ContactAnalysis,
   selected: Set<string>,
+  mode: ConversionMode = 'replace',
   onlyContactIds?: Set<string>,
 ): ContactConversionPlan[] {
   const grouped = groupSelectionByContact(analysis, selected);
@@ -80,7 +108,7 @@ export function planMigration(
     if (onlyContactIds && !onlyContactIds.has(analyzed.contact.id)) {
       continue;
     }
-    const conversions = planContactConversions(analyzed, selected);
+    const conversions = planContactConversions(analyzed, selected, mode);
     if (conversions.length > 0) {
       plans.push({
         contactId: analyzed.contact.id,
@@ -90,6 +118,15 @@ export function planMigration(
     }
   }
   return plans;
+}
+
+/** `planConversions` in `replace` mode — kept for existing callers. */
+export function planMigration(
+  analysis: ContactAnalysis,
+  selected: Set<string>,
+  onlyContactIds?: Set<string>,
+): ContactConversionPlan[] {
+  return planConversions(analysis, selected, 'replace', onlyContactIds);
 }
 
 export function makeBatchId(now: Date = new Date()): string {

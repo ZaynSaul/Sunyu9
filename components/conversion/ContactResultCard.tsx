@@ -23,7 +23,7 @@ function ContactResultCardComponent({
   const { contact, numbers } = analyzed;
 
   const convertibleKeys = useMemo(
-    () => numbers.filter((n) => n.convertible).map((n) => n.key),
+    () => numbers.filter((n) => n.convertible && !n.alreadyPaired).map((n) => n.key),
     [numbers],
   );
   const selectedCount = convertibleKeys.filter((k) => selectedKeys.has(k)).length;
