@@ -17,6 +17,32 @@ export function NumberDiffRow({ number, selected, onToggle }: NumberDiffRowProps
   const { phone, outcome } = number;
   const label = formatLabel(phone.label);
 
+  // Convertible, but the new number is already saved on this contact — there's
+  // nothing to add. Shown (not hidden) so the list still adds up.
+  if (outcome.status === 'convertible' && number.alreadyPaired) {
+    return (
+      <View style={styles.row}>
+        <View style={styles.spacer} />
+        <View style={styles.body}>
+          <Text variant="caption" tone="secondary">
+            {label}
+          </Text>
+          <View style={styles.diff}>
+            <Text variant="body" tone="secondary">
+              {phone.original}
+            </Text>
+            <View style={styles.pairedTag}>
+              <Ionicons name="checkmark" size={13} color={colors.accentGreen} />
+              <Text variant="caption" tone="secondary">
+                New number already saved
+              </Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
   if (outcome.status === 'convertible') {
     return (
       <View style={styles.row}>
@@ -86,5 +112,10 @@ const styles = StyleSheet.create({
   },
   oldNumber: {
     textDecorationLine: 'line-through',
+  },
+  pairedTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
   },
 });

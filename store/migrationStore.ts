@@ -12,6 +12,9 @@ import { applyMigration, undoMigration } from '@/services/contacts/contactUpdate
 import type { ContactAnalysis } from '@/services/contacts/contactAnalyzer';
 import type { MigrationBackup, MigrationResult, UndoResult } from '@/types';
 
+/** The write modes the review flow can trigger (`remove` is its own flow). */
+export type ApplyOperation = 'replace' | 'add';
+
 export type ApplyStatus = 'idle' | 'applying' | 'done' | 'error';
 export type UndoStatus = 'idle' | 'undoing' | 'undone' | 'error';
 
@@ -29,7 +32,11 @@ interface MigrationState {
   backup: MigrationBackup | null;
   error: string | null;
 
-  apply: (analysis: ContactAnalysis, selected: Set<string>) => Promise<void>;
+  apply: (
+    analysis: ContactAnalysis,
+    selected: Set<string>,
+    operation?: ApplyOperation,
+  ) => Promise<void>;
   /** Re-run only the contacts that failed in the last apply, merging results. */
   retryFailed: (analysis: ContactAnalysis, selected: Set<string>) => Promise<void>;
   undo: () => Promise<void>;
@@ -51,7 +58,7 @@ export const useMigrationStore = create<MigrationState>((set, get) => ({
   backup: null,
   error: null,
 
-  apply: async (analysis, selected) => {
+  apply: async (analysis, selected, operation = 'replace') => {
     if (get().applyStatus === 'applying') {
       return;
     }
@@ -60,6 +67,7 @@ export const useMigrationStore = create<MigrationState>((set, get) => ({
       const result = await applyMigration({
         analysis,
         selected,
+        operation,
         onProgress: (done, total) => set({ progress: { done, total } }),
       });
       const backup = await loadBackup();
@@ -84,12 +92,14 @@ export const useMigrationStore = create<MigrationState>((set, get) => ({
       const retry = await applyMigration({
         analysis,
         selected,
+        operation: result.operation,
         onlyContactIds: failedIds,
         resume: backup ?? undefined,
         onProgress: (done, total) => set({ progress: { done, total } }),
       });
       const merged: MigrationResult = {
         backupId: result.backupId,
+        operation: result.operation,
         updatedContacts: result.updatedContacts + retry.updatedContacts,
         updatedNumbers: result.updatedNumbers + retry.updatedNumbers,
         failures: retry.failures,

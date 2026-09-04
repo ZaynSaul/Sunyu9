@@ -36,6 +36,17 @@ interface AnalysisState {
 
 const INITIAL_PROGRESS: Progress = { done: 0, total: 0 };
 
+/**
+ * A number the review screen lets the user act on: convertible, and its 9-digit
+ * twin isn't already saved on the same contact (those are shown but not
+ * selectable — the "add" pass has nothing to do, and they belong to the
+ * "remove old numbers" pass instead).
+ */
+const isPending = (n: {
+  convertible: boolean;
+  alreadyPaired: boolean;
+}): boolean => n.convertible && !n.alreadyPaired;
+
 /** How many numbers / contacts the current selection covers. */
 export function selectionStats(
   analysis: ContactAnalysis | null,
@@ -47,10 +58,29 @@ export function selectionStats(
   let numbers = 0;
   let contacts = 0;
   for (const contact of analysis.actionable) {
-    const picked = contact.numbers.filter((n) => n.convertible && selected.has(n.key)).length;
+    const picked = contact.numbers.filter((n) => isPending(n) && selected.has(n.key)).length;
     if (picked > 0) {
       contacts += 1;
       numbers += picked;
+    }
+  }
+  return { numbers, contacts };
+}
+
+/** How many numbers / contacts are still waiting to be updated (paired ones excluded). */
+export function pendingTotals(
+  analysis: ContactAnalysis | null,
+): { numbers: number; contacts: number } {
+  if (!analysis) {
+    return { numbers: 0, contacts: 0 };
+  }
+  let numbers = 0;
+  let contacts = 0;
+  for (const contact of analysis.actionable) {
+    const n = contact.numbers.filter(isPending).length;
+    if (n > 0) {
+      contacts += 1;
+      numbers += n;
     }
   }
   return { numbers, contacts };
@@ -60,7 +90,7 @@ function allConvertibleKeys(analysis: ContactAnalysis): Set<string> {
   const keys = new Set<string>();
   for (const contact of analysis.actionable) {
     for (const number of contact.numbers) {
-      if (number.convertible) {
+      if (isPending(number)) {
         keys.add(number.key);
       }
     }
@@ -112,7 +142,7 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
 
     const selected = new Set(get().selected);
     for (const number of contact.numbers) {
-      if (!number.convertible) continue;
+      if (!isPending(number)) continue;
       if (isSelected) {
         selected.add(number.key);
       } else {

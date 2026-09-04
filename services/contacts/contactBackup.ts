@@ -17,12 +17,36 @@ const patchPhoneSchema = z.object({
   number: z.string(),
 });
 
+const rowChangeSchema = z.discriminatedUnion('op', [
+  z.object({
+    op: z.literal('relabel'),
+    rowId: z.string().nullable(),
+    value: z.string(),
+    fromLabel: z.string(),
+    toLabel: z.string(),
+  }),
+  z.object({
+    op: z.literal('add'),
+    value: z.string(),
+    label: z.string(),
+    pairedOldValue: z.string(),
+  }),
+  z.object({
+    op: z.literal('remove'),
+    rowId: z.string().nullable(),
+    value: z.string(),
+    label: z.string(),
+    pairedNewValue: z.string(),
+  }),
+]);
+
 const contactBackupSchema = z.object({
   contactId: z.string(),
   contactName: z.string(),
   originalPhones: z.array(patchPhoneSchema),
   newPhones: z.array(patchPhoneSchema),
   changedPhoneTags: z.array(z.string()),
+  rowChanges: z.array(rowChangeSchema).optional(),
 });
 
 export const migrationBackupSchema = z.object({
@@ -30,6 +54,10 @@ export const migrationBackupSchema = z.object({
   createdAt: z.string(),
   contacts: z.array(contactBackupSchema),
   status: z.enum(['applied', 'undone']),
+  // Backups written before the two-pass feature carried no `operation` — an
+  // absent value is a `replace` run; a corrupt one falls back to `replace` so a
+  // bad write can never make Undo unavailable.
+  operation: z.enum(['replace', 'add', 'remove']).catch('replace').default('replace'),
 }) satisfies z.ZodType<MigrationBackup>;
 
 export async function saveBackup(backup: MigrationBackup): Promise<void> {
@@ -50,17 +78,35 @@ export function backupToText(backup: MigrationBackup): string {
     `Sunyu9 migration backup`,
     `Batch: ${backup.id}`,
     `Created: ${backup.createdAt}`,
+    `Action: ${backup.operation}`,
     `Status: ${backup.status}`,
     `Contacts changed: ${backup.contacts.length}`,
     ``,
   ];
   for (const contact of backup.contacts) {
     lines.push(`${contact.contactName}`);
+
+    const removed = new Set(
+      (contact.rowChanges ?? []).filter((c) => c.op === 'remove').map((c) => c.value),
+    );
+
     for (const phone of contact.originalPhones) {
       const tag = phone.id ?? '';
-      const changed = contact.changedPhoneTags.includes(tag) ? '  (changed)' : '';
-      lines.push(`  ${phone.label || 'other'}: ${phone.number}${changed}`);
+      let note = '';
+      if (removed.has(phone.number)) {
+        note = '  (removed)';
+      } else if (contact.changedPhoneTags.includes(tag)) {
+        note = '  (changed)';
+      }
+      lines.push(`  ${phone.label || 'other'}: ${phone.number}${note}`);
     }
+
+    for (const change of contact.rowChanges ?? []) {
+      if (change.op === 'add') {
+        lines.push(`  ${change.label || 'other'}: ${change.value}  (added)`);
+      }
+    }
+
     lines.push('');
   }
   return lines.join('\n');

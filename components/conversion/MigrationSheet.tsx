@@ -1,21 +1,29 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { BottomSheet, Button, ProgressBar, Text } from '@/components/ui';
 import { colors, radius, spacing } from '@/constants/theme';
 import { shareBackup } from '@/services/contacts/backupExport';
 import type { ContactAnalysis } from '@/services/contacts/contactAnalyzer';
 import { selectionStats } from '@/store/analysisStore';
-import { useMigrationStore } from '@/store/migrationStore';
+import { useMigrationStore, type ApplyOperation } from '@/store/migrationStore';
 import { formatCount } from '@/utils/format';
 
-const ASSURANCES = [
-  'The original numbers are backed up on this device first.',
-  'Only the numbers you selected are changed.',
-  'You can undo straight after, restoring every original number.',
-  'Nothing is uploaded — this all happens on your phone.',
-];
+const ASSURANCES: Record<ApplyOperation, string[]> = {
+  add: [
+    'Your numbers are saved on this phone first.',
+    'Only the numbers you picked get a new number added.',
+    'Undo any time — the new numbers come off and the old labels go back.',
+    'Nothing goes online. It all happens on your phone.',
+  ],
+  replace: [
+    'Your original numbers are saved on this phone first.',
+    'Only the numbers you picked are changed.',
+    'Undo any time — every original number is put back.',
+    'Nothing goes online. It all happens on your phone.',
+  ],
+};
 
 type Mode = 'confirm' | 'applying' | 'applyError' | 'success' | 'undoing' | 'undone';
 
@@ -30,9 +38,9 @@ interface MigrationSheetProps {
 }
 
 /**
- * The entire write phase in one sheet: confirm -> progress -> result, plus undo,
- * retry and backup export. Replaces the old `/updating` and `/success` routes so
- * the flow never leaves the review screen.
+ * The entire write phase in one sheet: pick how to update -> confirm ->
+ * progress -> result, plus undo, retry and backup export. The flow never leaves
+ * the review screen.
  */
 export function MigrationSheet({ visible, analysis, selected, onCancel, onDone }: MigrationSheetProps) {
   const apply = useMigrationStore((s) => s.apply);
@@ -46,10 +54,18 @@ export function MigrationSheet({ visible, analysis, selected, onCancel, onDone }
   const backup = useMigrationStore((s) => s.backup);
   const error = useMigrationStore((s) => s.error);
 
+  const [choice, setChoice] = useState<ApplyOperation>('add');
   const [exportState, setExportState] = useState<'idle' | 'working' | 'unavailable'>('idle');
 
   const stats = selectionStats(analysis, selected);
   const noun = stats.numbers === 1 ? 'number' : 'numbers';
+
+  // A real example off the first picked number, to show what will happen.
+  const example = firstPickedExample(analysis, selected);
+
+  // The operation actually run is captured on the result, so progress / success
+  // copy stay correct even if `choice` re-renders.
+  const runOp: ApplyOperation = result?.operation === 'replace' ? 'replace' : 'add';
 
   const mode: Mode =
     undoStatus === 'undoing'
@@ -90,12 +106,30 @@ export function MigrationSheet({ visible, analysis, selected, onCancel, onDone }
             Update {formatCount(stats.numbers)} {noun}?
           </Text>
           <Text variant="body" tone="secondary" style={styles.lede}>
-            This changes {formatCount(stats.numbers)} {noun} across {formatCount(stats.contacts)}{' '}
-            {stats.contacts === 1 ? 'contact' : 'contacts'} to the new 9-digit format.
+            In {formatCount(stats.contacts)} {stats.contacts === 1 ? 'contact' : 'contacts'}. Pick how
+            you want it done — you can undo either one.
           </Text>
 
+          <View style={styles.choices}>
+            <ChoiceCard
+              selected={choice === 'add'}
+              recommended
+              title="Keep both numbers"
+              caption="Adds the new number and keeps the old one. Your contacts still show their names in WhatsApp. Remove the old numbers later."
+              onPress={() => setChoice('add')}
+            />
+            <ChoiceCard
+              selected={choice === 'replace'}
+              title="Switch to the new number now"
+              caption="Replaces the old number. Best once your contacts already use their new number, or after 30 November."
+              onPress={() => setChoice('replace')}
+            />
+          </View>
+
+          {example ? <NumberPreview old={example.old} next={example.next} choice={choice} /> : null}
+
           <View style={styles.card}>
-            {ASSURANCES.map((line) => (
+            {ASSURANCES[choice].map((line) => (
               <View key={line} style={styles.assuranceRow}>
                 <Ionicons
                   name="checkmark-circle"
@@ -112,8 +146,13 @@ export function MigrationSheet({ visible, analysis, selected, onCancel, onDone }
 
           <View style={styles.actions}>
             <Button
-              title={`Update ${formatCount(stats.numbers)} ${noun}`}
-              onPress={() => void apply(analysis, selected)}
+              title={
+                choice === 'add'
+                  ? `Add the new number for ${formatCount(stats.numbers)} ${noun}`
+                  : `Switch ${formatCount(stats.numbers)} ${noun}`
+              }
+              disabled={stats.numbers === 0}
+              onPress={() => void apply(analysis, selected, choice)}
             />
             <Button title="Cancel" variant="ghost" onPress={onCancel} />
           </View>
@@ -123,11 +162,11 @@ export function MigrationSheet({ visible, analysis, selected, onCancel, onDone }
       {mode === 'applying' || mode === 'undoing' ? (
         <>
           <Text variant="title">
-            {mode === 'applying' ? 'Updating contacts…' : 'Restoring original numbers…'}
+            {mode === 'applying' ? 'Updating contacts…' : 'Putting numbers back…'}
           </Text>
           <Text variant="body" tone="secondary" style={styles.lede}>
             {mode === 'applying'
-              ? 'Keep the app open. The original numbers are being backed up as we go.'
+              ? 'Keep the app open. Your original numbers are being saved as we go.'
               : 'Keep the app open.'}
           </Text>
           <View style={styles.progressBlock}>
@@ -145,11 +184,10 @@ export function MigrationSheet({ visible, analysis, selected, onCancel, onDone }
             The update stopped
           </Text>
           <Text variant="body" tone="secondary" style={styles.lede}>
-            {error ?? 'Something went wrong.'} Any changes already made are backed up and can be
-            undone.
+            {error ?? 'Something went wrong.'} Any changes already made are saved and can be undone.
           </Text>
           <View style={styles.actions}>
-            <Button title="Try again" onPress={() => void apply(analysis, selected)} />
+            <Button title="Try again" onPress={() => void apply(analysis, selected, choice)} />
             <Button title="Back to review" variant="ghost" onPress={onCancel} />
           </View>
         </>
@@ -158,13 +196,20 @@ export function MigrationSheet({ visible, analysis, selected, onCancel, onDone }
       {mode === 'success' ? (
         <>
           <Text variant="title" tone="success">
-            {formatCount(result?.updatedNumbers ?? 0)}{' '}
-            {(result?.updatedNumbers ?? 0) === 1 ? 'number' : 'numbers'} updated
+            {runOp === 'add' ? 'New numbers added' : 'Numbers switched'}
           </Text>
           <Text variant="body" tone="secondary" style={styles.lede}>
-            Across {formatCount(result?.updatedContacts ?? 0)}{' '}
-            {(result?.updatedContacts ?? 0) === 1 ? 'contact' : 'contacts'}. Apps like WhatsApp
-            will show the new format once they refresh your contacts.
+            {runOp === 'add'
+              ? `Added for ${formatCount(result?.updatedNumbers ?? 0)} ${
+                  (result?.updatedNumbers ?? 0) === 1 ? 'number' : 'numbers'
+                } in ${formatCount(result?.updatedContacts ?? 0)} ${
+                  (result?.updatedContacts ?? 0) === 1 ? 'contact' : 'contacts'
+                }. Both numbers are saved now — WhatsApp keeps using the old one until your contact switches. Come back later to remove the old numbers.`
+              : `${formatCount(result?.updatedNumbers ?? 0)} ${
+                  (result?.updatedNumbers ?? 0) === 1 ? 'number' : 'numbers'
+                } in ${formatCount(result?.updatedContacts ?? 0)} ${
+                  (result?.updatedContacts ?? 0) === 1 ? 'contact' : 'contacts'
+                }. If a contact hasn’t updated their own WhatsApp yet, their chat may show a plain number until they do.`}
           </Text>
 
           {result && result.failures.length > 0 ? (
@@ -208,7 +253,7 @@ export function MigrationSheet({ visible, analysis, selected, onCancel, onDone }
               />
             ) : null}
             {backup ? (
-              <Button title="Undo changes" variant="secondary" onPress={() => void undo()} />
+              <Button title="Undo this" variant="secondary" onPress={() => void undo()} />
             ) : null}
             <Button title="Done" onPress={onDone} />
           </View>
@@ -217,7 +262,7 @@ export function MigrationSheet({ visible, analysis, selected, onCancel, onDone }
 
       {mode === 'undone' ? (
         <>
-          <Text variant="title">Original numbers restored</Text>
+          <Text variant="title">Numbers put back</Text>
           <Text variant="body" tone="secondary" style={styles.lede}>
             {formatCount(undoResult?.restoredContacts ?? 0)}{' '}
             {(undoResult?.restoredContacts ?? 0) === 1 ? 'contact was' : 'contacts were'} changed
@@ -232,9 +277,193 @@ export function MigrationSheet({ visible, analysis, selected, onCancel, onDone }
   );
 }
 
+/** The first selected, not-yet-paired convertible number — for the preview. */
+function firstPickedExample(
+  analysis: ContactAnalysis,
+  selected: Set<string>,
+): { old: string; next: string } | null {
+  for (const contact of analysis.actionable) {
+    for (const number of contact.numbers) {
+      if (
+        number.outcome.status === 'convertible' &&
+        !number.alreadyPaired &&
+        selected.has(number.key)
+      ) {
+        return { old: number.phone.original, next: number.outcome.display };
+      }
+    }
+  }
+  return null;
+}
+
+// ── sub-views ────────────────────────────────────────────────────────────────
+
+function ChoiceCard({
+  selected,
+  recommended,
+  title,
+  caption,
+  onPress,
+}: {
+  selected: boolean;
+  recommended?: boolean;
+  title: string;
+  caption: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="radio"
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      style={[styles.choice, selected && styles.choiceOn]}
+    >
+      <Ionicons
+        name={selected ? 'radio-button-on' : 'radio-button-off'}
+        size={22}
+        color={selected ? colors.brand : colors.textSecondary}
+        style={styles.choiceRadio}
+      />
+      <View style={styles.choiceBody}>
+        <View style={styles.choiceTitleRow}>
+          <Text variant="body" weight="semibold">
+            {title}
+          </Text>
+          {recommended ? (
+            <View style={styles.recommendPill}>
+              <Text style={styles.recommendText}>Recommended</Text>
+            </View>
+          ) : null}
+        </View>
+        <Text variant="caption" tone="secondary">
+          {caption}
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
+
+function NumberPreview({
+  old,
+  next,
+  choice,
+}: {
+  old: string;
+  next: string;
+  choice: ApplyOperation;
+}) {
+  if (choice === 'add') {
+    return (
+      <View style={styles.preview}>
+        <View style={styles.previewRow}>
+          <Text variant="caption" tone="secondary" style={styles.previewTag}>
+            Old
+          </Text>
+          <Text variant="body" style={styles.previewNum}>
+            {old}
+          </Text>
+          <Ionicons name="checkmark-circle" size={16} color={colors.accentGreen} />
+        </View>
+        <View style={styles.previewRow}>
+          <Text variant="caption" tone="secondary" style={styles.previewTag}>
+            New
+          </Text>
+          <Text variant="body" weight="semibold" style={styles.previewNum}>
+            {next}
+          </Text>
+          <Ionicons name="add-circle" size={16} color={colors.brand} />
+        </View>
+        <Text variant="caption" tone="secondary">
+          Both numbers stay on the contact.
+        </Text>
+      </View>
+    );
+  }
+  return (
+    <View style={styles.preview}>
+      <View style={styles.previewRow}>
+        <Text variant="body" tone="secondary" style={styles.previewStrike}>
+          {old}
+        </Text>
+        <Ionicons name="arrow-forward" size={15} color={colors.textSecondary} />
+        <Text variant="body" weight="semibold">
+          {next}
+        </Text>
+      </View>
+      <Text variant="caption" tone="secondary">
+        The old number is replaced.
+      </Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   lede: {
     marginTop: spacing.xs,
+  },
+  choices: {
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+  },
+  choice: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    alignItems: 'flex-start',
+  },
+  choiceOn: {
+    borderColor: colors.brand,
+    backgroundColor: colors.brandTint,
+  },
+  choiceRadio: {
+    marginTop: 1,
+  },
+  choiceBody: {
+    flex: 1,
+    gap: 2,
+  },
+  choiceTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    flexWrap: 'wrap',
+  },
+  recommendPill: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
+    backgroundColor: colors.accentGreenTint,
+  },
+  recommendText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.accentGreen,
+  },
+  preview: {
+    marginTop: spacing.lg,
+    padding: spacing.lg,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    gap: spacing.sm,
+  },
+  previewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  previewTag: {
+    width: 32,
+  },
+  previewNum: {
+    flex: 1,
+    fontVariant: ['tabular-nums'],
+  },
+  previewStrike: {
+    textDecorationLine: 'line-through',
+    fontVariant: ['tabular-nums'],
   },
   card: {
     backgroundColor: colors.surface,

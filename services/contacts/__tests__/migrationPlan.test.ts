@@ -4,6 +4,7 @@ import {
   groupSelectionByContact,
   makeBatchId,
   planContactConversions,
+  planConversions,
   planMigration,
 } from '../migrationPlan';
 
@@ -85,6 +86,53 @@ describe('planContactConversions', () => {
     expect(planContactConversions(analyzed, onlyMobile)).toEqual([
       { from: '7123456', to: '877123456' },
     ]);
+  });
+});
+
+describe('planContactConversions — add mode', () => {
+  it('skips a number whose 9-digit twin is already on the contact', async () => {
+    const analysis = await analyze([
+      contact('a', [
+        ['mobile', '7123456', 'p1'],
+        ['mobile', '877123456', 'p2'], // the twin — already added
+      ]),
+    ]);
+    const analyzed = analysis.actionable[0];
+    expect(analyzed.numbers[0].alreadyPaired).toBe(true);
+    expect(planContactConversions(analyzed, allKeys(analysis), 'add')).toEqual([]);
+  });
+
+  it('de-dupes two identical old rows into one added number', async () => {
+    const analysis = await analyze([
+      contact('a', [
+        ['mobile', '7123456', 'p1'],
+        ['home', '7123456', 'p2'],
+      ]),
+    ]);
+    const analyzed = analysis.actionable[0];
+    expect(planContactConversions(analyzed, allKeys(analysis), 'add')).toEqual([
+      { from: '7123456', to: '877123456' },
+    ]);
+    // replace mode still emits one per row
+    expect(planContactConversions(analyzed, allKeys(analysis), 'replace')).toHaveLength(2);
+  });
+});
+
+describe('planConversions', () => {
+  it('add mode drops contacts that only hold already-paired numbers', async () => {
+    const analysis = await analyze([
+      contact('a', [['mobile', '7123456'], ['mobile', '877123456']]),
+      contact('b', [['mobile', '3123456']]),
+    ]);
+    const plans = planConversions(analysis, allKeys(analysis), 'add');
+    expect(plans.map((p) => p.contactId)).toEqual(['b']);
+  });
+
+  it('planMigration is planConversions in replace mode', async () => {
+    const analysis = await analyze([contact('a', [['mobile', '7123456']])]);
+    expect(planMigration(analysis, allKeys(analysis))).toEqual(
+      planConversions(analysis, allKeys(analysis), 'replace'),
+    );
   });
 });
 

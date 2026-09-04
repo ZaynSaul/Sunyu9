@@ -206,6 +206,7 @@ function makeBackup(overrides: Partial<MigrationBackup['contacts'][number]> = {}
     id: 'mig_2026-09-04T00-00-00-000Z',
     createdAt: '2026-09-04T00:00:00.000Z',
     status: 'applied',
+    operation: 'replace',
     contacts: [
       {
         contactId: 'c1',
@@ -263,6 +264,163 @@ describe('undoMigration', () => {
 
     expect(mockPatch).not.toHaveBeenCalled();
     expect(result.restoredContacts).toBe(0);
+    expect(result.failures).toHaveLength(1);
+  });
+});
+
+// ── applyMigration — "add" operation ─────────────────────────────────────────
+
+describe('applyMigration (operation: add)', () => {
+  it('keeps the old row (relabelled) and appends the new number', async () => {
+    const { analysis, selected } = await planFor(contactWith([['mobile', '7012345']]));
+    mockGetPhones.mockResolvedValue([{ id: 'live-1', label: '_$!<Mobile>!$_', number: '7012345' }]);
+
+    const result = await applyMigration({ analysis, selected, operation: 'add' });
+
+    expect(mockPatch).toHaveBeenCalledWith('c1', {
+      phones: [
+        { id: 'live-1', label: 'mobile (old)', number: '7012345' },
+        { label: '_$!<Mobile>!$_', number: '877012345' },
+      ],
+    });
+    expect(result).toMatchObject({ operation: 'add', updatedContacts: 1, updatedNumbers: 1 });
+
+    const saved = saveBackup.mock.calls.at(-1)![0] as MigrationBackup;
+    expect(saved.operation).toBe('add');
+    expect(saved.contacts[0].rowChanges).toEqual([
+      { op: 'relabel', rowId: 'live-1', value: '7012345', fromLabel: 'mobile', toLabel: 'mobile (old)' },
+      { op: 'add', value: '877012345', label: 'mobile', pairedOldValue: '7012345' },
+    ]);
+  });
+
+  it('labels an unlabelled old row "old" and adds the new row with no label', async () => {
+    const { analysis, selected } = await planFor(contactWith([['mobile', '7012345']]));
+    mockGetPhones.mockResolvedValue([{ id: 'live-1', label: undefined, number: '7012345' }]);
+
+    await applyMigration({ analysis, selected, operation: 'add' });
+
+    expect(mockPatch).toHaveBeenCalledWith('c1', {
+      phones: [
+        { id: 'live-1', label: 'old', number: '7012345' },
+        { number: '877012345' },
+      ],
+    });
+  });
+
+  it('keeps the +220 form on the added row', async () => {
+    const { analysis, selected } = await planFor(contactWith([['mobile', '+220 7012345']]));
+    mockGetPhones.mockResolvedValue([
+      { id: 'live-1', label: '_$!<Mobile>!$_', number: '+220 7012345' },
+    ]);
+
+    await applyMigration({ analysis, selected, operation: 'add' });
+
+    expect(mockPatch).toHaveBeenCalledWith('c1', {
+      phones: [
+        { id: 'live-1', label: 'mobile (old)', number: '+220 7012345' },
+        { label: '_$!<Mobile>!$_', number: '+220 87 701 2345' },
+      ],
+    });
+  });
+
+  it('skips a number that changed since the scan — no write, no failure', async () => {
+    const { analysis, selected } = await planFor(contactWith([['mobile', '7012345']]));
+    mockGetPhones.mockResolvedValue([{ id: 'live-1', label: '_$!<Mobile>!$_', number: '9990000' }]);
+
+    const result = await applyMigration({ analysis, selected, operation: 'add' });
+
+    expect(mockPatch).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ updatedContacts: 0, failures: [] });
+    expect(saveBackup).not.toHaveBeenCalled();
+  });
+
+  it('is idempotent — a row already marked "(old)" is not double-suffixed', async () => {
+    const { analysis, selected } = await planFor(contactWith([['mobile', '7012345']]));
+    mockGetPhones.mockResolvedValue([{ id: 'live-1', label: 'mobile (old)', number: '7012345' }]);
+
+    await applyMigration({ analysis, selected, operation: 'add' });
+
+    expect(mockPatch).toHaveBeenCalledWith('c1', {
+      phones: [
+        { id: 'live-1', label: 'mobile (old)', number: '7012345' },
+        { label: 'mobile (old)', number: '877012345' },
+      ],
+    });
+  });
+});
+
+describe('undoMigration (operation: add)', () => {
+  function addBackup(): MigrationBackup {
+    return {
+      id: 'mig_add',
+      createdAt: '2026-09-04T00:00:00.000Z',
+      status: 'applied',
+      operation: 'add',
+      contacts: [
+        {
+          contactId: 'c1',
+          contactName: 'Awa',
+          originalPhones: [{ id: 'p1', label: 'mobile', number: '7012345' }],
+          newPhones: [
+            { id: 'p1', label: 'mobile (old)', number: '7012345' },
+            { label: 'mobile', number: '877012345' },
+          ],
+          changedPhoneTags: ['p1'],
+          rowChanges: [
+            { op: 'relabel', rowId: 'p1', value: '7012345', fromLabel: 'mobile', toLabel: 'mobile (old)' },
+            { op: 'add', value: '877012345', label: 'mobile', pairedOldValue: '7012345' },
+          ],
+        },
+      ],
+    };
+  }
+
+  it('removes the added row and restores the old label', async () => {
+    mockGetPhones.mockResolvedValue([
+      { id: 'live-1', label: 'mobile (old)', number: '7012345' },
+      { id: 'live-2', label: '_$!<Mobile>!$_', number: '877012345' },
+      { id: 'live-3', label: '_$!<Home>!$_', number: '5550000' }, // user added since
+    ]);
+
+    const result = await undoMigration({ backup: addBackup() });
+
+    expect(result).toMatchObject({ restoredContacts: 1, failures: [] });
+    expect(mockPatch).toHaveBeenCalledWith('c1', {
+      phones: [
+        { id: 'live-1', label: '_$!<Mobile>!$_', number: '7012345' },
+        { id: 'live-3', number: '5550000' },
+      ],
+    });
+  });
+
+  it('still restores the label when the user already deleted the added row', async () => {
+    mockGetPhones.mockResolvedValue([{ id: 'live-1', label: 'mobile (old)', number: '7012345' }]);
+
+    const result = await undoMigration({ backup: addBackup() });
+
+    expect(result.restoredContacts).toBe(1);
+    expect(mockPatch).toHaveBeenCalledWith('c1', {
+      phones: [{ id: 'live-1', label: '_$!<Mobile>!$_', number: '7012345' }],
+    });
+  });
+
+  it('does nothing when the user already reverted both changes', async () => {
+    mockGetPhones.mockResolvedValue([{ id: 'live-1', label: '_$!<Mobile>!$_', number: '7012345' }]);
+
+    const result = await undoMigration({ backup: addBackup() });
+
+    expect(mockPatch).not.toHaveBeenCalled();
+    expect(result.restoredContacts).toBe(0);
+    expect(result.failures).toEqual([]);
+  });
+
+  it('records a failure when an add backup has no rowChanges', async () => {
+    const backup = addBackup();
+    backup.contacts[0].rowChanges = [];
+
+    const result = await undoMigration({ backup });
+
+    expect(mockPatch).not.toHaveBeenCalled();
     expect(result.failures).toHaveLength(1);
   });
 });
