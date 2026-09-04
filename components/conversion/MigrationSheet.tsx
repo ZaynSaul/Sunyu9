@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { BottomSheet, Button, ProgressBar, Text } from '@/components/ui';
@@ -89,8 +89,61 @@ export function MigrationSheet({ visible, analysis, selected, onCancel, onDone }
   const { done, total } = progress;
   const ratio = total > 0 ? done / total : 0;
 
+  // Action buttons live in the sheet's pinned footer so they stay reachable
+  // however tall the content scrolls. `applying` / `undoing` have none.
+  let footer: ReactNode = null;
+  if (mode === 'confirm') {
+    footer = (
+      <>
+        <Button
+          title={
+            choice === 'add'
+              ? `Add the new number for ${formatCount(stats.numbers)} ${noun}`
+              : `Switch ${formatCount(stats.numbers)} ${noun}`
+          }
+          disabled={stats.numbers === 0}
+          onPress={() => void apply(analysis, selected, choice)}
+        />
+        <Button title="Cancel" variant="ghost" onPress={onCancel} />
+      </>
+    );
+  } else if (mode === 'applyError') {
+    footer = (
+      <>
+        <Button title="Try again" onPress={() => void apply(analysis, selected, choice)} />
+        <Button title="Back to review" variant="ghost" onPress={onCancel} />
+      </>
+    );
+  } else if (mode === 'success') {
+    footer = (
+      <>
+        {result && result.failures.length > 0 ? (
+          <Button
+            title={`Retry ${formatCount(result.failures.length)} failed`}
+            variant="secondary"
+            onPress={() => void retryFailed(analysis, selected)}
+          />
+        ) : null}
+        {backup ? (
+          <Button
+            title="Save backup file"
+            variant="ghost"
+            loading={exportState === 'working'}
+            onPress={() => void onExport()}
+          />
+        ) : null}
+        {backup ? (
+          <Button title="Undo this" variant="secondary" onPress={() => void undo()} />
+        ) : null}
+        <Button title="Done" onPress={onDone} />
+      </>
+    );
+  } else if (mode === 'undone') {
+    footer = <Button title="Done" onPress={onDone} />;
+  }
+
   return (
-    <BottomSheet visible={visible} onClose={handleClose} dismissible={!busy}>
+    <BottomSheet visible={visible} onClose={handleClose} dismissible={!busy} footer={footer}>
       {mode === 'confirm' ? (
         <>
           <Text variant="title">
@@ -134,19 +187,6 @@ export function MigrationSheet({ visible, analysis, selected, onCancel, onDone }
               </View>
             ))}
           </View>
-
-          <View style={styles.actions}>
-            <Button
-              title={
-                choice === 'add'
-                  ? `Add the new number for ${formatCount(stats.numbers)} ${noun}`
-                  : `Switch ${formatCount(stats.numbers)} ${noun}`
-              }
-              disabled={stats.numbers === 0}
-              onPress={() => void apply(analysis, selected, choice)}
-            />
-            <Button title="Cancel" variant="ghost" onPress={onCancel} />
-          </View>
         </>
       ) : null}
 
@@ -177,10 +217,6 @@ export function MigrationSheet({ visible, analysis, selected, onCancel, onDone }
           <Text variant="body" tone="secondary" style={styles.lede}>
             {error ?? 'Something went wrong.'} Any changes already made are saved and can be undone.
           </Text>
-          <View style={styles.actions}>
-            <Button title="Try again" onPress={() => void apply(analysis, selected, choice)} />
-            <Button title="Back to review" variant="ghost" onPress={onCancel} />
-          </View>
         </>
       ) : null}
 
@@ -226,28 +262,6 @@ export function MigrationSheet({ visible, analysis, selected, onCancel, onDone }
               Saving a file isn’t available on this device.
             </Text>
           ) : null}
-
-          <View style={styles.actions}>
-            {result && result.failures.length > 0 ? (
-              <Button
-                title={`Retry ${formatCount(result.failures.length)} failed`}
-                variant="secondary"
-                onPress={() => void retryFailed(analysis, selected)}
-              />
-            ) : null}
-            {backup ? (
-              <Button
-                title="Save backup file"
-                variant="ghost"
-                loading={exportState === 'working'}
-                onPress={() => void onExport()}
-              />
-            ) : null}
-            {backup ? (
-              <Button title="Undo this" variant="secondary" onPress={() => void undo()} />
-            ) : null}
-            <Button title="Done" onPress={onDone} />
-          </View>
         </>
       ) : null}
 
@@ -259,9 +273,6 @@ export function MigrationSheet({ visible, analysis, selected, onCancel, onDone }
             {(undoResult?.restoredContacts ?? 0) === 1 ? 'contact was' : 'contacts were'} changed
             back.
           </Text>
-          <View style={styles.actions}>
-            <Button title="Done" onPress={onDone} />
-          </View>
         </>
       ) : null}
     </BottomSheet>
@@ -487,9 +498,5 @@ const styles = StyleSheet.create({
   },
   note: {
     marginTop: spacing.md,
-  },
-  actions: {
-    gap: spacing.sm,
-    marginTop: spacing.lg,
   },
 });

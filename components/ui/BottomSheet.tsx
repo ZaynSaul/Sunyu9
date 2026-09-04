@@ -21,6 +21,11 @@ interface BottomSheetProps {
   onClose: () => void;
   children: ReactNode;
   /**
+   * Pinned below the scroll area — action buttons that should stay reachable
+   * however tall the content is.
+   */
+  footer?: ReactNode;
+  /**
    * When `false`, the backdrop tap, the Android back button and the close (×)
    * button all do nothing — the content must provide its own way out. Used
    * while a migration is writing so the run can't be half-abandoned.
@@ -38,7 +43,13 @@ interface BottomSheetProps {
  * gesture-handler) to keep this offline utility's dependency surface and APK
  * small. Same visual language as the sheet in the Deliva app.
  */
-export function BottomSheet({ visible, onClose, children, dismissible = true }: BottomSheetProps) {
+export function BottomSheet({
+  visible,
+  onClose,
+  children,
+  footer,
+  dismissible = true,
+}: BottomSheetProps) {
   const requestClose = dismissible ? onClose : () => {};
   const insets = useSafeAreaInsets();
 
@@ -127,13 +138,20 @@ export function BottomSheet({ visible, onClose, children, dismissible = true }: 
           </View>
           <ScrollView
             style={styles.scroll}
-            contentContainerStyle={{ paddingBottom: insets.bottom + spacing.xl }}
+            contentContainerStyle={{
+              paddingBottom: footer ? spacing.lg : insets.bottom + spacing.xl,
+            }}
             bounces={false}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
             {children}
           </ScrollView>
+          {footer ? (
+            <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.md }]}>
+              {footer}
+            </View>
+          ) : null}
         </Animated.View>
       </View>
     </Modal>
@@ -163,6 +181,13 @@ const styles = StyleSheet.create({
   // flexShrink lets the sheet hug short content but cap + scroll tall content.
   scroll: {
     flexShrink: 1,
+  },
+  footer: {
+    paddingTop: spacing.md,
+    gap: spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    backgroundColor: colors.background,
   },
   grabber: {
     height: 36,
