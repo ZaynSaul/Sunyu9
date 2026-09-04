@@ -27,4 +27,6 @@ Offline-first Expo app that upgrades Gambian phone contacts from 7-digit to
 
 ## Commands
 
-`npm run typecheck` · `npm test` · `npx expo export --platform android` (bundle check)
+Yarn only — this repo has no `package-lock.json`, don't run plain `npm install`.
+
+`yarn typecheck` · `yarn test` · `npx expo export --platform android` (bundle check)
