@@ -1643,6 +1643,14 @@
     "@babel/traverse" "^7.29.0"
     "@react-native/codegen" "0.86.3"
 
+"@react-native/babel-plugin-codegen@0.88.0-rc.4":
+  version "0.88.0-rc.4"
+  resolved "https://registry.yarnpkg.com/@react-native/babel-plugin-codegen/-/babel-plugin-codegen-0.88.0-rc.4.tgz#7cd59e0adfb90285a5d80dbf62abf4d4e316d2dd"
+  integrity sha512-XrbXubYD+2XOLfCy7mwbaWT3tkpP+7VWcjRr4dz0LW3EfR6bbD6Y4bHnLQDVEmlOoefowRrcabTKYJYUBviQMg==
+  dependencies:
+    "@babel/traverse" "^7.29.0"
+    "@react-native/codegen" "0.88.0-rc.4"
+
 "@react-native/codegen@0.86.3":
   version "0.86.3"
   resolved "https://registry.yarnpkg.com/@react-native/codegen/-/codegen-0.86.3.tgz#7ef0a10bb98ba5004463cf8f66adb000dba1a598"
@@ -1651,6 +1659,19 @@
     "@babel/core" "^7.25.2"
     "@babel/parser" "^7.29.0"
     hermes-parser "0.36.0"
+    invariant "^2.2.4"
+    nullthrows "^1.1.1"
+    tinyglobby "^0.2.15"
+    yargs "^17.6.2"
+
+"@react-native/codegen@0.88.0-rc.4":
+  version "0.88.0-rc.4"
+  resolved "https://registry.yarnpkg.com/@react-native/codegen/-/codegen-0.88.0-rc.4.tgz#37299cd6609fe64cce68308d48c463553905ac86"
+  integrity sha512-kNRAX3FF0YHE6j3ied6t50M6mO/LuBVzRH72bPItaSWt6f8S69AG1rJTEVwz01G6yMnsc1KZK2x1eO9HVSOb3g==
+  dependencies:
+    "@babel/core" "^7.25.2"
+    "@babel/parser" "^7.29.0"
+    flow-parser "0.327.0"
     invariant "^2.2.4"
     nullthrows "^1.1.1"
     tinyglobby "^0.2.15"
@@ -2476,10 +2497,10 @@ babel-plugin-react-compiler@^1.0.0:
   dependencies:
     "@babel/types" "^7.26.0"
 
-babel-plugin-react-native-web@~0.21.0:
-  version "0.21.2"
-  resolved "https://registry.yarnpkg.com/babel-plugin-react-native-web/-/babel-plugin-react-native-web-0.21.2.tgz#d2f7fd673278da82577aa583457edb55d9cccbe0"
-  integrity sha512-SPD0J6qjJn8231i0HZhlAGH6NORe+QvRSQM2mwQEzJ2Fb3E4ruWTiiicPlHjmeWShDXLcvoorOCXjeR7k/lyWA==
+babel-plugin-react-native-web@~0.21.0, babel-plugin-react-native-web@~0.21.4:
+  version "0.21.4"
+  resolved "https://registry.yarnpkg.com/babel-plugin-react-native-web/-/babel-plugin-react-native-web-0.21.4.tgz#8d65d0b23cde34b6440e9fa833adc174b8990d3b"
+  integrity sha512-FSclsDTGi5EcvpbW3TM7s8GLWwQqo5wI9zQqJr2m0IoJRenSkp1+bVvdeZXTNznI5Ms9Bry7DLBR+C5Shb9gtw==
 
 babel-plugin-syntax-hermes-parser@0.36.0:
   version "0.36.0"
@@ -2523,7 +2544,55 @@ babel-preset-current-node-syntax@^1.0.0:
     "@babel/plugin-syntax-private-property-in-object" "^7.14.5"
     "@babel/plugin-syntax-top-level-await" "^7.14.5"
 
-babel-preset-expo@^57.0.9, babel-preset-expo@~57.0.9:
+babel-preset-expo@^58.0.14:
+  version "58.0.14"
+  resolved "https://registry.yarnpkg.com/babel-preset-expo/-/babel-preset-expo-58.0.14.tgz#8e339824b23787486dfc96dc4486050fde30e3cd"
+  integrity sha512-v3oYNJXZsADFQtLYg0ObIzx7NGzLHzLxt7RfHihGHTZbebM1JKGjyggQtLpyOZSim9pmMt9Lexj/bQpKImQMNg==
+  dependencies:
+    "@babel/generator" "^7.20.5"
+    "@babel/helper-module-imports" "^7.25.9"
+    "@babel/plugin-proposal-decorators" "^7.12.9"
+    "@babel/plugin-proposal-export-default-from" "^7.24.7"
+    "@babel/plugin-syntax-dynamic-import" "^7.8.3"
+    "@babel/plugin-syntax-export-default-from" "^7.24.7"
+    "@babel/plugin-syntax-nullish-coalescing-operator" "^7.8.3"
+    "@babel/plugin-syntax-optional-chaining" "^7.8.3"
+    "@babel/plugin-transform-async-generator-functions" "^7.25.4"
+    "@babel/plugin-transform-async-to-generator" "^7.24.7"
+    "@babel/plugin-transform-block-scoping" "^7.25.0"
+    "@babel/plugin-transform-class-properties" "^7.25.4"
+    "@babel/plugin-transform-class-static-block" "^7.27.1"
+    "@babel/plugin-transform-classes" "^7.25.4"
+    "@babel/plugin-transform-destructuring" "^7.24.8"
+    "@babel/plugin-transform-export-namespace-from" "^7.25.9"
+    "@babel/plugin-transform-flow-strip-types" "^7.25.2"
+    "@babel/plugin-transform-for-of" "^7.24.7"
+    "@babel/plugin-transform-logical-assignment-operators" "^7.24.7"
+    "@babel/plugin-transform-modules-commonjs" "^7.24.8"
+    "@babel/plugin-transform-named-capturing-groups-regex" "^7.24.7"
+    "@babel/plugin-transform-nullish-coalescing-operator" "^7.24.7"
+    "@babel/plugin-transform-object-rest-spread" "^7.24.7"
+    "@babel/plugin-transform-optional-catch-binding" "^7.24.7"
+    "@babel/plugin-transform-optional-chaining" "^7.24.8"
+    "@babel/plugin-transform-parameters" "^7.24.7"
+    "@babel/plugin-transform-private-methods" "^7.24.7"
+    "@babel/plugin-transform-private-property-in-object" "^7.24.7"
+    "@babel/plugin-transform-react-display-name" "^7.24.7"
+    "@babel/plugin-transform-react-jsx" "^7.28.6"
+    "@babel/plugin-transform-react-jsx-development" "^7.27.1"
+    "@babel/plugin-transform-react-pure-annotations" "^7.27.1"
+    "@babel/plugin-transform-runtime" "^7.24.7"
+    "@babel/plugin-transform-typescript" "^7.25.2"
+    "@babel/plugin-transform-unicode-regex" "^7.24.7"
+    "@babel/preset-typescript" "^7.23.0"
+    "@react-native/babel-plugin-codegen" "0.88.0-rc.4"
+    babel-plugin-react-compiler "^1.0.0"
+    babel-plugin-react-native-web "~0.21.4"
+    babel-plugin-syntax-hermes-parser "^0.36.0"
+    babel-plugin-transform-flow-enums "^0.0.2"
+    debug "^4.3.4"
+
+babel-preset-expo@~57.0.9:
   version "57.0.9"
   resolved "https://registry.yarnpkg.com/babel-preset-expo/-/babel-preset-expo-57.0.9.tgz#10df45c4e5f6d924c8e09099b822b47864e26e1d"
   integrity sha512-T19biGOBTnMp161PyBqWOoSIEeZug8/EjtuUdVob8JPQKZMTalHUQaQt+qtQQE7XsEkZJ6erb3k0CohneTFzQg==
@@ -3983,6 +4052,18 @@ flow-enums-runtime@^0.0.6:
   version "0.0.6"
   resolved "https://registry.yarnpkg.com/flow-enums-runtime/-/flow-enums-runtime-0.0.6.tgz#5bb0cd1b0a3e471330f4d109039b7eba5cb3e787"
   integrity sha512-3PYnM29RFXwvAN6Pc/scUfkI7RwhQ/xqyLUyPNlXUp9S40zI8nup9tUSrTLSVnWGBN38FNiGWbwZOB6uR4OGdw==
+
+flow-estree@0.327.0:
+  version "0.327.0"
+  resolved "https://registry.yarnpkg.com/flow-estree/-/flow-estree-0.327.0.tgz#59c1b87cc6c5dd7ad195ac059e9f8efa6c28c2df"
+  integrity sha512-f9vK751YUzD0qaHSpKc5/qQM6gqOlgGS+4ZRqTNcZOpVqn3mC55yEQ6dUG2K1eaVm5FbKkz9CFWe6XNvrkQFQg==
+
+flow-parser@0.327.0:
+  version "0.327.0"
+  resolved "https://registry.yarnpkg.com/flow-parser/-/flow-parser-0.327.0.tgz#05ab7e7ab6304a992a151cc89faf9111d89d8596"
+  integrity sha512-/MYZ5hXWf5ozpbdfUDmazMgQXviLxWEiRLH3MppEGDdW0itRVqmB5UaU7QX+SBCDNiq+gEesSVn8nlxmPDyDkw==
+  dependencies:
+    flow-estree "0.327.0"
 
 fontfaceobserver@^2.1.0:
   version "2.3.0"
